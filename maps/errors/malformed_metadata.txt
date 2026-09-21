@@ -1,0 +1,5 @@
+# Metadato sin '=' -> [zone=normal color] es invalido
+nb_drones: 1
+start_hub: start 0 0
+end_hub: goal 2 0
+hub: mid 1 0 [zone=normal color]

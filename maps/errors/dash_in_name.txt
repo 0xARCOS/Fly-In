@@ -1,0 +1,5 @@
+# Nombre de zona con guion -> los nombres no pueden llevar '-'
+nb_drones: 1
+start_hub: start 0 0
+end_hub: goal 2 0
+hub: mid-zone 1 0

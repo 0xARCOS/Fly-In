@@ -1,0 +1,7 @@
+# a-b y luego b-a -> conexion duplicada
+nb_drones: 2
+start_hub: start 0 0
+end_hub: goal 2 0
+hub: mid 1 0
+connection: start-mid
+connection: mid-start

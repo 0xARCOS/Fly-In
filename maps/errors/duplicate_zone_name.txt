@@ -1,0 +1,6 @@
+# Dos zonas con el mismo nombre -> nombre de zona no es unico
+nb_drones: 2
+start_hub: start 0 0
+end_hub: goal 3 0
+hub: mid 1 0
+hub: mid 2 0

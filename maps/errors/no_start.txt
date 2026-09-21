@@ -1,0 +1,5 @@
+# Falta start_hub -> debe fallar el criterio "exactamente un start_hub"
+nb_drones: 2
+end_hub: goal 4 0
+hub: waypoint1 1 0
+connection: waypoint1-goal

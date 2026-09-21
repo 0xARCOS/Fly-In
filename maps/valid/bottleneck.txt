@@ -1,0 +1,6 @@
+nb_drones: 3
+start_hub: start 0 0
+end_hub: goal 4 0
+hub: narrow 2 0 [max_drones=1]
+connection: start-narrow [max_link_capacity=1]
+connection: narrow-goal [max_link_capacity=1]
