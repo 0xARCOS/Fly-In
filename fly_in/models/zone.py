@@ -26,10 +26,12 @@ class Zone:
         self.zone_type = zone_type
         self.max_drones = max_drones
         self.color = color
-        self.neighbors: Set["Zone"] = set() # Adyacentes
+        self.neighbors: Set["Zone"] = set()  # Adyacentes
 
     def __repr__(self) -> str:
-        capacity_str = "inf" if self.max_drones == float("inf") else str(int(self.max_drones))  
+        capacity_str = (
+            "inf" if self.max_drones == float("inf") else str(int(self.max_drones))
+        )
         return (
             f"Zone(name={self.name!r}, x={self.x}, y={self.y}, "
             f"zone_type={self.zone_type!r}, max_drones={capacity_str})"

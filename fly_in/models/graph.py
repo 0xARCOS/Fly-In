@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional
 
-from models.connection import Connection
-from models.zone import Zone
+from fly_in.models.connection import Connection
+from fly_in.models.zone import Zone
 
 ROLES = {"hub", "start_hub", "end_hub"}
 
@@ -63,8 +63,8 @@ class Graph:
 
         zone_a = self.zones[origin]
         zone_b = self.zones[destination]
-        zone_a.neighbord.add(zone_b)
-        zone_b.neighbord.add(zone_a)
+        zone_a.neighbors.add(zone_b)
+        zone_b.neighbors.add(zone_a)
         self.connections.append(Connection(zone_a, zone_b, max_link_capacity))
 
     def get_zone(self, name: str) -> Zone:
