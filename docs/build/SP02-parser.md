@@ -1,7 +1,7 @@
-# SP02 — El parser ✅ (con deuda)
+# SP02 — El parser ✅
 
-> **Estado:** hecho y probado (15 tests verdes). Tres divergencias con el
-> subject están localizadas y documentadas al final.
+> **Estado:** hecho y probado (15 tests verdes). Las tres divergencias con el
+> subject que estaban documentadas al final ya se han corregido.
 
 **Objetivo:** convertir un archivo de texto en `(nb_drones, Graph)` válido, o
 fallar con un error que diga **qué línea** y **por qué**.
@@ -218,51 +218,30 @@ $ make test
 ```
 
 - [x] 9 mapas de error lanzan `MapParseError` con la causa correcta
-- [x] `no_start.txt` lanza `ValueError` *(ver deuda)*
-- [x] 3 mapas válidos parsean y producen el grafo esperado
+- [x] `no_start.txt` lanza `MapValidationError`
+- [x] 4 mapas válidos parsean y producen el grafo esperado
 - [x] `make lint-strict` pasa
 
 ---
 
-## Deuda conocida
+## Deuda conocida (resuelta)
 
-Tres divergencias con el subject, verificadas leyendo el PDF. Ninguna rompe los
-tests actuales, pero las tres pueden hacerte fallar con un mapa de evaluación
-—que *"pueden ser distintos de los del subject"* *(Cap. X)*.
+Tres divergencias con el subject, detectadas leyendo el PDF y corregidas:
 
-### 1. `max_drones` en `start_hub`/`end_hub` debe ignorarse, no validarse
+### 1. `max_drones` en `start_hub`/`end_hub` se ignora, no se valida
 
 *(Cap. VII.4)*: *"The `max_drones` capacity is **ignored** on the `start_hub` and
 `end_hub` zones (…) If such metadata is present on those two zones, it is
 ignored and **is not a validation error**."*
 
-Hoy `MapParser.parse` valida `max_drones > 0` **antes** de mirar el rol, así que
-`start_hub: base 0 0 [max_drones=-1]` da error cuando debería parsear
-limpiamente.
+`MapParser.parse` mira el rol **antes** de validar `max_drones`: en
+`start_hub`/`end_hub` usa `float("inf")` (el mismo centinela de "ilimitado" que
+ya usaba `Zone.__repr__`), y solo valida `max_drones > 0` para `hub` normal.
+Cubierto por `maps/valid/ignored_capacity.txt`.
 
-**Arreglo:** comprobar el rol primero.
+### 2. La falta de `start_hub`/`end_hub` lanza `MapValidationError`
 
-```python
-if rol in ("start_hub", "end_hub"):
-    max_drones = 0          # o el centinela que uses para "ilimitado"
-else:
-    max_drones = int(meta.get("max_drones", 1))
-    if max_drones <= 0:
-        raise ValueError("max_drones must be a positive integer")
-```
-
-Añade un mapa `maps/valid/ignored_capacity.txt` que lo cubra.
-
-### 2. La falta de `start_hub`/`end_hub` lanza `ValueError`, no `MapParseError`
-
-Esas dos comprobaciones ocurren **después** del bucle, cuando ya no hay una
-línea concreta que señalar — de ahí el `ValueError` pelado, y de ahí que
-`test_parser.py` tenga un test aparte para `no_start.txt`.
-
-Es defendible, pero incoherente de cara a [SP03](./SP03-cli-y-errores.md), que
-tendrá que capturar dos tipos de excepción para la misma clase de fallo.
-
-**Arreglo recomendado:** una excepción hermana con la misma raíz.
+`fly_in/models/errors.py` define ahora una raíz común:
 
 ```python
 class MapError(Exception):
@@ -275,21 +254,18 @@ class MapValidationError(MapError):
     """Fallo del archivo en conjunto (falta start_hub, end_hub inalcanzable…)."""
 ```
 
-SP03 captura `MapError` y cubre los dos casos.
+[SP03](./SP03-cli-y-errores.md) captura `MapError` y cubre los dos casos con un
+único `except`.
 
-### 3. Las coordenadas negativas se rechazan sin que el subject lo pida
+### 3. Las coordenadas negativas ya no se rechazan
 
-`parse_zone_line` tiene `if x < 0 or y < 0: raise ValueError("Coords can't be
-negative")`. El subject solo dice que *"the zones coordinates will always be
-integers"* *(Cap. VI)* — nunca que sean no negativas.
+`parse_zone_line` ya no comprueba `x < 0 or y < 0`. El subject solo dice que
+*"the zones coordinates will always be integers"* *(Cap. VI)*, nunca que sean no
+negativas, y solo se usan para dibujar.
 
-Las coordenadas solo se usan para dibujar, y un mapa con una zona en `(-3, 2)`
-es perfectamente dibujable. **Recomendación: quitar la restricción.** Si
-prefieres mantenerla, documéntala explícitamente como una restricción propia,
-más estricta que el subject.
+### 4. Mensajes unificados a inglés
 
-### 4. Menor: los mensajes mezclan español e inglés
-
-`"La línea debe contener ':'"` junto a `"Waiting 3 values, got 3"` (que además
-debería decir *"Expected"*). Unifica a un idioma en [SP03](./SP03-cli-y-errores.md),
-cuando los mensajes pasen a verse de verdad por el usuario final.
+Las dos últimas cadenas en español (`"La línea debe contener ':'"`, `"La línea
+debe empezar con 'connection:'"`) y el `"Waiting 3 values"` (ahora `"Expected 3
+values"`) quedaron en inglés, consistentes con el resto de mensajes del
+parser.

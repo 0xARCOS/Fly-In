@@ -1,4 +1,4 @@
-from models.zone import Zone
+from fly_in.models.zone import Zone
 
 
 class Connection:

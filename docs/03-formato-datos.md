@@ -69,7 +69,7 @@ Cada casilla corresponde a una regla del Cap. VII.4 y a un mapa de prueba en
 - [x] `zone=` solo los cuatro valores válidos → `invalid_zone_type.txt`
 - [x] `max_drones` / `max_link_capacity` enteros positivos → `negative_capacity.txt`
 - [x] Metadatos sintácticamente válidos (todo par lleva `=`) → `malformed_metadata.txt`
-- [ ] `max_drones` en `start_hub`/`end_hub` se ignora **sin error** *(pendiente, ver [SP02](./build/SP02-parser.md#deuda-conocida))*
+- [x] `max_drones` en `start_hub`/`end_hub` se ignora **sin error** → `maps/valid/ignored_capacity.txt`
 - [x] Líneas y colas de línea con `#` se ignoran
 - [x] Cualquier otro fallo → excepción con **línea y causa**
 

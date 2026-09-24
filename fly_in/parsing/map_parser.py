@@ -1,6 +1,6 @@
 from typing import Dict, List, Tuple
 
-from fly_in.models.errors import MapParseError
+from fly_in.models.errors import MapParseError, MapValidationError
 from fly_in.models.graph import Graph
 from fly_in.models.zone import ALLOWED_ZONE_TYPES, Zone
 
@@ -91,7 +91,7 @@ def parse_zone_line(line: str) -> Tuple[str, str, int, int, Dict[str, str]]:
     """
     # Separate rol
     if ":" not in line:
-        raise ValueError("La línea debe contener ':' para separar el rol")
+        raise ValueError("Line must contain ':' to separate the role")
 
     rol, rest = line.split(":", 1)
     rol = rol.strip()
@@ -110,7 +110,7 @@ def parse_zone_line(line: str) -> Tuple[str, str, int, int, Dict[str, str]]:
     basic_data = basic_data.strip()
     lists = basic_data.split()
     if len(lists) != 3:
-        raise ValueError(f"Waiting 3 values, got {len(lists)}")
+        raise ValueError(f"Expected 3 values, got {len(lists)}")
 
     name = lists[0]
     if "-" in name:
@@ -118,10 +118,10 @@ def parse_zone_line(line: str) -> Tuple[str, str, int, int, Dict[str, str]]:
 
     x_str = lists[1]
     y_str = lists[2]
+    # El subject solo exige que las coordenadas sean enteras (Cap. VI); no
+    # pide que sean no negativas, y solo se usan para dibujar.
     x = int(x_str)
     y = int(y_str)
-    if x < 0 or y < 0:
-        raise ValueError("Coords can't be negative")
 
     zone_type = metadata.get("zone", "normal")
     if zone_type not in ALLOWED_ZONE_TYPES:
@@ -141,7 +141,7 @@ def parse_connection_line(line: str) -> Tuple[str, str, Dict[str, str]]:
     Output: ("corridorA", "tunnelB", {"max_link_capacity":"2"})
     """
     if not line.startswith("connection:"):
-        raise ValueError("La línea debe empezar con 'connection:'")
+        raise ValueError("Line must start with 'connection:'")
 
     parts = line.split(":", 1)
     body = parts[1].strip()
@@ -228,11 +228,17 @@ class MapParser:
                     rol, name, x, y, meta = parse_zone_line(
                         content
                     )
-                    max_drones = int(meta.get("max_drones", 1))
-                    if max_drones <= 0:
-                        raise ValueError(
-                            "max_drones must be a positive integer"
-                        )
+                    max_drones: float
+                    if rol in ("start_hub", "end_hub"):
+                        # Cap. VII.4: max_drones se ignora en start_hub/end_hub,
+                        # no es un error de validación aunque esté presente.
+                        max_drones = float("inf")
+                    else:
+                        max_drones = int(meta.get("max_drones", 1))
+                        if max_drones <= 0:
+                            raise ValueError(
+                                "max_drones must be a positive integer"
+                            )
                     color = meta.get("color")
                     zone_type = meta.get("zone", "normal")
 
@@ -254,9 +260,9 @@ class MapParser:
                 raise MapParseError(num_line, content, str(e))
 
         if graph.start_hub is None:
-            raise ValueError("Map need a 'start_hub'")
+            raise MapValidationError("Map needs a 'start_hub'")
 
         if graph.end_hub is None:
-            raise ValueError("Map need a 'end_hub'")
+            raise MapValidationError("Map needs a 'end_hub'")
 
         return nb_drones, graph

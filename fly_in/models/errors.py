@@ -1,4 +1,8 @@
-class MapParseError(Exception):
+class MapError(Exception):
+    """Raíz de todos los errores relacionados con un mapa (E/S o contenido)."""
+
+
+class MapParseError(MapError):
     """
     Error de parseo de un archivo de mapa.
 
@@ -14,3 +18,12 @@ class MapParseError(Exception):
         self.reason = reason
         message = f"Línea {line_num}: '{line_content}' -> {reason}"
         super().__init__(message)
+
+
+class MapValidationError(MapError):
+    """Fallo del archivo en conjunto (falta start_hub, falta end_hub…).
+
+    A diferencia de `MapParseError`, no hay una única línea a la que
+    señalar: la comprobación solo puede hacerse tras leer el archivo
+    entero (ver "Deuda conocida #2" en docs/build/SP02-parser.md).
+    """

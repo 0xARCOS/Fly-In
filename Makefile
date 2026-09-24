@@ -1,6 +1,7 @@
 VENV        := .venv
 PYTHON      := $(VENV)/bin/python
 PIP         := $(VENV)/bin/pip
+MAP         ?= maps/valid/linear.txt
 
 .PHONY: install run debug lint lint-strict test clean
 
@@ -10,10 +11,10 @@ install:
 	$(PIP) install -e ".[dev]"
 
 run:
-	$(PYTHON) -m fly_in.main
+	$(PYTHON) -m fly_in.main $(MAP)
 
 debug:
-	$(PYTHON) -m pdb -m fly_in.main
+	$(PYTHON) -m pdb -m fly_in.main $(MAP)
 
 lint:
 	$(PYTHON) -m flake8 .
