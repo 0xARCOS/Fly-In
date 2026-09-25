@@ -84,7 +84,7 @@ classDiagram
         +int y
         +ZoneType zone_type
         +Optional~str~ color
-        +int max_drones
+        +float max_drones
         +movement_cost() int
         +is_traversable() bool
     }
@@ -106,6 +106,7 @@ classDiagram
         +add_connection(str, str, int) None
         +get_zone(str) Zone
         +neighbors(Zone) list~Connection~
+        +connection_between(Zone, Zone) Connection
     }
 
     class MapParser {

@@ -48,19 +48,22 @@ no podrá ni salir de casa. Y el síntoma que verás **no** será *"start_hub
 llena"*: será *"el dron 4 no encuentra ruta"*, y te pasarás la tarde depurando
 la búsqueda de SP07, que está perfectamente bien.
 
-Impleméntalo en el único sitio donde no se te puede olvidar: dentro de la propia
-tabla.
+**Ya está resuelto en el modelo, no lo dupliques.** El parser da a
+`start_hub`/`end_hub` `max_drones = UNLIMITED` (`float("inf")`, en
+`fly_in/models/zone.py`). Así la comprobación genérica ya es cierta para ellas,
+sin ningún `if` especial:
 
 ```python
 def zone_has_room(self, zone: Zone, turn: int) -> bool:
-    if self._is_unlimited(zone):     # start_hub o end_hub
-        return True
     return self._zones.get((zone.name, turn), 0) < zone.max_drones
 ```
 
-Para saber si una zona es ilimitada, la tabla necesita conocer el grafo — pásalo
-en el constructor. Es más limpio que esparcir comprobaciones `if zone is
-graph.start_hub` por todo el código de la búsqueda.
+No añadas además un `if zone is graph.start_hub`: dos mecanismos para la misma
+regla acaban divergiendo. El test "reservar `start_hub` con 100 drones nunca
+falla" es el que te protege si alguien cambia el parser.
+
+Para obtener la `Connection` de un movimiento `frm → to`, usa
+`graph.connection_between(frm, to)` (O(1), funciona en ambos sentidos).
 
 ## Paso 3 — La interfaz
 
@@ -109,6 +112,23 @@ class ReservationTable:
         conservan intactas.
         """
 ```
+
+### Convención de tiempo (compartida con SP07 y SP08)
+
+- `_zones[(z, t)]` cuenta los drones que **están en `z` durante el turno
+  `t`**, es decir, los que esperan ahí en `t`. Un dron que *sale* de `z` en el
+  turno `t` ya no cuenta en `(z, t)`: así se cumple "drones moving out of a
+  zone free up capacity for that same turn" (Cap. VII.3) sin código extra.
+- Un movimiento que empieza en el turno `T` con coste `c` ocupa la conexión en
+  `T … T+c-1` y la zona destino desde `T+c` (tabla del paso 4).
+- La salida (SP09) imprime el movimiento en la línea del turno en que
+  **termina**: `T` para coste 1; `T` (conexión) y `T+1` (zona) para coste 2.
+- Por tanto, al comprobar si un dron puede entrar en `destino` saliendo en
+  `T`, la pregunta correcta es `zone_has_room(destino, T + cost)`.
+
+SP07 y SP08 deben usar exactamente esta convención. Un desfase de ±1 aquí se
+ve como "drones que chocan un turno sí y otro no", y es muy difícil de
+rastrear desde arriba.
 
 ## Paso 4 — `reserve_move()`: el caso `restricted` con cuidado
 
@@ -204,7 +224,8 @@ por comprensión, como arriba, o itera sobre `list(self._zones.items())`.
 ## Criterio de salida
 
 - [ ] Los 11 tests pasan
-- [ ] Ninguna comprobación de "es start/end hub" vive fuera de esta clase
+- [ ] Ninguna comprobación explícita de "es start/end hub": la capacidad
+      `UNLIMITED` del modelo lo resuelve
 - [ ] `make lint-strict` pasa
 
 ## Decisiones a anotar

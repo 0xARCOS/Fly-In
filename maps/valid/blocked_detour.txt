@@ -1,0 +1,11 @@
+nb_drones: 1
+start_hub: start 0 0
+end_hub: goal 2 0
+hub: blocker 1 0 [zone=blocked]
+hub: detour1 0 1
+hub: detour2 1 1
+connection: start-blocker
+connection: blocker-goal
+connection: start-detour1
+connection: detour1-detour2
+connection: detour2-goal

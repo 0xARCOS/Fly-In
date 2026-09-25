@@ -1,4 +1,4 @@
-# SP03 — CLI y manejo de errores ⬜
+# SP03 — CLI y manejo de errores ✅
 
 **Objetivo:** que el programa sea **ejecutable de verdad** por primera vez:
 recibe la ruta de un mapa, lo lee, lo parsea, y si algo falla muestra un mensaje

@@ -1,4 +1,4 @@
-# SP05 — `AbstractDistance`: la heurística ⬜
+# SP05 — `AbstractDistance`: la heurística ✅
 
 **Objetivo:** responder en tiempo constante a *"¿cuál es el coste mínimo real
 desde la zona X hasta `end_hub`, si no hubiera ningún otro dron?"*

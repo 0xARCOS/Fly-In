@@ -17,10 +17,10 @@ Ejecuta todo con `make test`.
 
 | Archivo de test | Subproyecto | Qué verifica |
 |---|---|---|
-| `test/test_parser.py` | [SP02](./build/SP02-parser.md) | Cada mapa de error falla con su causa; los válidos parsean ✅ **15 tests, verdes** |
-| `test/test_cli.py` | [SP03](./build/SP03-cli-y-errores.md) | Fichero inexistente / sin permisos / vacío dan mensaje limpio y código de salida ≠ 0, nunca un traceback |
-| `test/test_dijkstra.py` | [SP04](./build/SP04-dijkstra.md) | Ruta conocida a mano; `blocked` nunca aparece; `priority` gana los empates; grafo sin ruta devuelve "sin ruta", no excepción |
-| `test/test_abstract_distance.py` | [SP05](./build/SP05-heuristica-abstracta.md) | `h(end)==0`; `restricted` suma 2; zona aislada es inalcanzable; coincide con Dijkstra |
+| `test/test_parser.py` | [SP02](./build/SP02-parser.md) | Cada mapa de error falla con su causa; los válidos y los oficiales parsean; metadatos estrictos; índices de `Graph` ✅ |
+| `test/test_cli.py` | [SP03](./build/SP03-cli-y-errores.md) | Fichero inexistente / sin permisos / vacío dan mensaje limpio y código de salida ≠ 0, nunca un traceback; `end_hub` inalcanzable se detecta; `--window` ≤ 0 se rechaza ✅ |
+| `test/test_dijkstra.py` | [SP04](./build/SP04-dijkstra.md) | Ruta conocida a mano; `blocked` nunca aparece; `priority` gana los empates; grafo sin ruta devuelve "sin ruta", no excepción ✅ |
+| `test/test_abstract_distance.py` | [SP05](./build/SP05-heuristica-abstracta.md) | `h(end)==0`; `restricted` suma 2; zona aislada es inalcanzable; coincide con Dijkstra ✅ |
 | `test/test_reservation_table.py` | [SP06](./build/SP06-tabla-reservas.md) | Capacidades de zona y enlace; `start`/`end` sin límite; tránsito ocupa 2 turnos; `would_swap`; `clear_from` |
 | `test/test_whca.py` | [SP07](./build/SP07-whca.md) | Un dron replica a Dijkstra; dos drones ante un cuello de botella se alternan; ruta parcial al agotar la ventana |
 | `test/test_simulator.py` | [SP08](./build/SP08-drone-y-simulador.md) | Todos llegan; ninguna ocupación violada en ningún turno; el resultado no depende del orden de la lista de drones |

@@ -1,3 +1,2 @@
 [flake8]
-max-line-length = 100
-exclude = .venv,.git,__pycache__,.mipy_cache,.pytest_cache,*.egg-info
+exclude = .venv,.git,__pycache__,.mypy_cache,.pytest_cache,*.egg-info

@@ -1,7 +1,11 @@
 # SP02 — El parser ✅
 
-> **Estado:** hecho y probado (15 tests verdes). Las tres divergencias con el
-> subject que estaban documentadas al final ya se han corregido.
+> **Estado:** hecho y probado (`test/test_parser.py`, más de 80 casos). Las
+> divergencias con el subject documentadas al final ya se han corregido, y los
+> metadatos se validan de forma estricta: sin claves ni valores vacíos, sin
+> claves repetidas y solo claves válidas para el tipo de línea
+> (`zone`/`color`/`max_drones` en zonas, `max_link_capacity` en conexiones).
+> `start_hub`/`end_hub` no pueden ser `blocked`.
 
 **Objetivo:** convertir un archivo de texto en `(nb_drones, Graph)` válido, o
 fallar con un error que diga **qué línea** y **por qué**.
@@ -99,7 +103,7 @@ El orden de las operaciones importa:
 4. Validar el nombre (sin `-`; los espacios son imposibles por construcción, ya
    que se troceó por espacios).
 5. `int()` de las coordenadas.
-6. Validar `zone=` contra `ALLOWED_ZONE_TYPES`.
+6. Convertir `zone=` en `ZoneType` con `parse_zone_type()` (error claro si no es válido).
 
 ⚠️ **No lo des por sentado — corta los corchetes antes de contar tokens**
 `"roof1 3 4 [zone=restricted color=red]"` troceado por espacios da 6 tokens, no
@@ -166,7 +170,7 @@ class MapParseError(Exception):
         self.line_num = line_num
         self.line_content = line_content
         self.reason = reason
-        super().__init__(f"Línea {line_num}: '{line_content}' -> {reason}")
+        super().__init__(f"Line {line_num}: '{line_content}' -> {reason}")
 ```
 
 Guarda los tres campos **por separado** además de componer el mensaje. Así
@@ -235,8 +239,7 @@ Tres divergencias con el subject, detectadas leyendo el PDF y corregidas:
 ignored and **is not a validation error**."*
 
 `MapParser.parse` mira el rol **antes** de validar `max_drones`: en
-`start_hub`/`end_hub` usa `float("inf")` (el mismo centinela de "ilimitado" que
-ya usaba `Zone.__repr__`), y solo valida `max_drones > 0` para `hub` normal.
+`start_hub`/`end_hub` usa `UNLIMITED` (= `float("inf")`, definido en `zone.py`), y solo valida `max_drones > 0` para `hub` normal.
 Cubierto por `maps/valid/ignored_capacity.txt`.
 
 ### 2. La falta de `start_hub`/`end_hub` lanza `MapValidationError`

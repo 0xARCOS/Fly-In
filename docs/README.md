@@ -45,11 +45,11 @@ hecha y no vuelves a tocarla salvo que cambie el diseño.
 |---|---|---|
 | [`SP00`](./build/SP00-setup.md) | Repositorio, `Makefile`, entorno, linters | ✅ hecho |
 | [`SP01`](./build/SP01-modelo-dominio.md) | `Zone`, `Connection`, `Graph` | ✅ hecho |
-| [`SP02`](./build/SP02-parser.md) | `MapParser` + mapas de prueba | ✅ hecho (con deuda anotada) |
-| [`SP03`](./build/SP03-cli-y-errores.md) | Lectura de fichero, argumentos de línea de comandos, errores limpios | ⬜ pendiente |
-| [`SP04`](./build/SP04-dijkstra.md) | `Dijkstra`: ruta óptima de **un** dron | ⬜ pendiente |
-| [`SP05`](./build/SP05-heuristica-abstracta.md) | `AbstractDistance`: la heurística `h(n)` | ⬜ pendiente |
-| [`SP06`](./build/SP06-tabla-reservas.md) | `ReservationTable`: ocupación espacio-temporal | ⬜ pendiente |
+| [`SP02`](./build/SP02-parser.md) | `MapParser` + mapas de prueba | ✅ hecho |
+| [`SP03`](./build/SP03-cli-y-errores.md) | Lectura de fichero, argumentos de línea de comandos, errores limpios | ✅ hecho |
+| [`SP04`](./build/SP04-dijkstra.md) | `Dijkstra`: ruta óptima de **un** dron | ✅ hecho |
+| [`SP05`](./build/SP05-heuristica-abstracta.md) | `AbstractDistance`: la heurística `h(n)` | ✅ hecho |
+| [`SP06`](./build/SP06-tabla-reservas.md) | `ReservationTable`: ocupación espacio-temporal | ▶️ siguiente |
 | [`SP07`](./build/SP07-whca.md) | `WhcaPathfinder`: búsqueda cooperativa con ventana | ⬜ pendiente |
 | [`SP08`](./build/SP08-drone-y-simulador.md) | `Drone` + `Simulator`: el bucle turno a turno | ⬜ pendiente |
 | [`SP09`](./build/SP09-formato-salida.md) | `OutputFormatter`: la salida exacta del subject | ⬜ pendiente |

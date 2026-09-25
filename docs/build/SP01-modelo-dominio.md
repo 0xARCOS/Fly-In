@@ -37,11 +37,19 @@ vertebral de la arquitectura.
 `fly_in/models/zone.py`
 
 ```python
+class ZoneType(Enum):
+    NORMAL = "normal"
+    RESTRICTED = "restricted"
+    PRIORITY = "priority"
+    BLOCKED = "blocked"
+
+
 class Zone:
     """Un nodo del mapa: un hub normal, el start_hub o el end_hub."""
 
     def __init__(self, name: str, x: int, y: int,
-                 zone_type: str = "normal", max_drones: int = 1,
+                 zone_type: ZoneType = ZoneType.NORMAL,
+                 max_drones: float = 1,
                  color: Optional[str] = None) -> None: ...
 ```
 
@@ -100,11 +108,21 @@ class Graph:
         self.end_hub: Optional[Zone] = None
         self.connections: List[Connection] = []
 
-    def add_zone(self, zone: Zone, rol: str) -> None: ...
+    def add_zone(self, zone: Zone, role: str) -> None: ...
     def add_connection(self, origin: str, destination: str,
                        max_link_capacity: int) -> None: ...
     def get_zone(self, name: str) -> Zone: ...
-    def neighbors(self, zone: Zone) -> List[Connection]: ...
+    def neighbors(self, zone: Zone) -> List[Connection]: ...      # O(1)
+    def connection_between(self, a: Zone, b: Zone) -> Connection: ...  # O(1)
+```
+
+Internamente guarda dos índices que se rellenan en `add_connection`:
+`_adjacency: dict[nombre_zona, list[Connection]]` y
+`_by_pair: dict[frozenset[nombre, nombre], Connection]`. El pathfinding llama a
+`neighbors()` en cada expansión; recorrer la lista entera de conexiones cada vez
+convertiría cada búsqueda en `O(V·E)`.
+
+```python
 ```
 
 **El `Graph` es el guardián de las reglas que dependen del archivo entero**, no
@@ -115,7 +133,7 @@ de una línea suelta:
 | Nombres de zona únicos | `add_zone` |
 | Un solo `start_hub`, un solo `end_hub` | `add_zone` |
 | Las conexiones referencian zonas ya definidas | `add_connection` |
-| Sin conexiones duplicadas (`a-b` == `b-a`) | `add_connection`, comparando conjuntos `{a, b}` |
+| Sin conexiones duplicadas (`a-b` == `b-a`) | `add_connection`, con la clave `frozenset({a, b})` |
 
 ⚠️ **No lo des por sentado — por qué estas reglas no van en el parser**
 El parser mira **una línea cada vez**. No puede saber si un nombre está
@@ -124,11 +142,13 @@ memoria, has reescrito el `Graph` dentro del parser. Poniendo los invariantes en
 `Graph`, el parser solo traduce texto a llamadas, y **el grafo es imposible de
 construir en estado inválido**, venga de donde venga (parser, test, intérprete).
 
-**Cómo se detecta el duplicado `a-b` == `b-a`:** comparando conjuntos, porque un
-conjunto no tiene orden.
+**Cómo se detecta el duplicado `a-b` == `b-a`:** con un `frozenset` como clave,
+porque un conjunto no tiene orden (y `frozenset`, a diferencia de `set`, se
+puede usar como clave de diccionario).
 
 ```python
-if {conn.zone_a.name, conn.zone_b.name} == {origin, destination}:
+pair = frozenset((origin, destination))
+if pair in self._by_pair:
     raise ValueError(...)
 ```
 
@@ -172,18 +192,20 @@ Si esto funciona sin tocar el parser, la separación de capas es correcta.
 | `Connection` guarda objetos `Zone` | `dict[str, list[str]]` de adyacencia | Acceso directo a coste y capacidad del vecino, sin re-lookup |
 | Invariantes en `Graph`, no en el parser | Validación en `MapParser` | El grafo es inconstruible en estado inválido, venga de donde venga |
 | `neighbors()` devuelve conexiones | Devolver zonas vecinas | Hace falta la arista para `max_link_capacity` y para nombrarla en la salida |
-| `zone_type` como `str` validado contra un `set` | `Enum ZoneType` | *Decisión pendiente de revisar* — ver abajo |
+| `zone_type` como `Enum ZoneType` | `str` validado contra un `set` | mypy caza erratas (`ZoneType.RESTRICTD`) y comparaciones con texto suelto (`zone_type == "priority"`, siempre falsa) en tiempo de `make lint-strict`, no en ejecución |
 
 ## Deuda conocida
 
-**`zone_type` debería ser un `Enum`.** Ahora es un `str` validado contra
-`ALLOWED_ZONE_TYPES`. Funciona, pero un `Enum` daría:
+**Resuelto: `zone_type` es un `Enum`.** `ZoneType` usa `Enum` y no
+`StrEnum` porque `StrEnum` es de Python 3.11 y el proyecto admite 3.10. El
+parser convierte el texto con `ZoneType("restricted")`; compara siempre con
+`is` (`zone.zone_type is ZoneType.PRIORITY`).
 
-- verificación en tiempo de `mypy` en vez de en tiempo de ejecución — un
-  `zone.zone_type == "restrictd"` (con typo) hoy compila y es siempre falso;
-  con `ZoneType.RESTRICTD` mypy lo caza;
-- un sitio natural donde colgar `movement_cost()` y `is_traversable()`.
+**Resuelto:** `movement_cost()` e `is_traversable()` ya existen en `Zone`
+(añadidos en [SP04](./SP04-dijkstra.md)). El antiguo atributo `Zone.neighbors`
+(un `set` que nadie leía y con orden no determinista) se eliminó: los vecinos
+se consultan siempre con `graph.neighbors(zone)`.
 
-**Faltan `movement_cost()` y `is_traversable()` en `Zone`.** Los necesita
-Dijkstra. Se añaden en [SP04](./SP04-dijkstra.md), que es donde por primera vez
-hacen falta de verdad — añadirlos ahora sería código sin usar.
+**Capacidad ilimitada.** `max_drones` es `float` porque `start_hub`/`end_hub`
+reciben `UNLIMITED = float("inf")` (`zone.py`). Así `ocupación < max_drones` es
+cierto para ellas sin ningún `if` especial en SP06/SP07/SP08.

@@ -1,0 +1,13 @@
+nb_drones: 1
+start_hub: start 0 0
+end_hub: goal 2 0
+hub: n1 1 -1
+hub: n2 2 -1
+hub: p1 1 1 [zone=priority]
+hub: p2 2 1 [zone=priority]
+connection: start-n1
+connection: n1-n2
+connection: n2-goal
+connection: start-p1
+connection: p1-p2
+connection: p2-goal

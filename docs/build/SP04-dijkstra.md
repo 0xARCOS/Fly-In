@@ -1,4 +1,4 @@
-# SP04 — Dijkstra: la ruta de un solo dron ⬜
+# SP04 — Dijkstra: la ruta de un solo dron ✅
 
 **Objetivo:** dado el grafo, calcular la ruta de coste mínimo `start_hub →
 end_hub` **ignorando por completo a los demás drones**.

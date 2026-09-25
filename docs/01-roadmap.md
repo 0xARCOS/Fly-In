@@ -33,7 +33,10 @@ flowchart TD
 
     style SP00 fill:#d5f5d5
     style SP01 fill:#d5f5d5
-    style SP02 fill:#fff3cd
+    style SP02 fill:#d5f5d5
+    style SP03 fill:#d5f5d5
+    style SP04 fill:#d5f5d5
+    style SP05 fill:#d5f5d5
 ```
 
 Verde = hecho · amarillo = hecho con deuda anotada · sin color = pendiente.
@@ -66,44 +69,54 @@ hacerse en cualquier momento. Solo SP07 las une.
 
 ## Estado actual del repositorio
 
-Lo que ya existe, verificado leyendo el código:
+Lo que ya existe, verificado ejecutando el código (116 tests verdes,
+`make lint` y `make lint-strict` limpios, `flake8` a 79 columnas):
 
 ```
 fly_in/
-├── __init__.py
-├── main.py                  # SP00: placeholder, imprime un mensaje
+├── main.py                  # SP03 ✅ argumentos, lectura segura, errores
+│                            #        limpios, end_hub inalcanzable detectado
 ├── models/
-│   ├── zone.py              # SP01 ✅ Zone + ALLOWED_ZONE_TYPES
+│   ├── zone.py              # SP01 ✅ Zone, ZoneType, UNLIMITED, movement_cost(),
+│   │                        #        is_traversable()
 │   ├── connection.py        # SP01 ✅ Connection + other_end() + name
-│   ├── graph.py             # SP01 ✅ Graph + invariantes de nombres/roles
-│   └── errors.py            # SP02 ✅ MapParseError(línea, contenido, causa)
-└── parsing/
-    └── map_parser.py        # SP02 ✅ clean_lines, parse_metadata,
-                             #         parse_zone_line, parse_connection_line,
-                             #         MapParser.parse
+│   ├── graph.py             # SP01 ✅ Graph + invariantes + índices O(1):
+│   │                        #        neighbors(), connection_between()
+│   └── errors.py            # SP02 ✅ MapError, MapParseError, MapValidationError
+├── parsing/
+│   └── map_parser.py        # SP02 ✅ parser con metadatos estrictos
+└── pathfinding/
+    ├── dijkstra.py          # SP04 ✅ ruta de un dron + distances_from()
+    └── abstract_distance.py # SP05 ✅ heurística h(n) por Dijkstra inverso
 maps/
-├── valid/     linear.txt · bottleneck.txt · single_drone.txt
-└── errors/    10 mapas, uno por regla de validación
+├── valid/         7 mapas pequeños, uno por comportamiento
+├── errors/        10 mapas, uno por regla de validación
+└── oficial_maps/  los 10 mapas oficiales (easy/medium/hard/challenger)
 test/
-└── test_parser.py           # 15 tests, todos pasan
+├── test_parser.py            # SP01/SP02
+├── test_cli.py               # SP03
+├── test_dijkstra.py          # SP04
+└── test_abstract_distance.py # SP05
 ```
 
-**Lo siguiente que toca es SP03 o SP04.** SP03 es más corto y hace que el
-proyecto sea ejecutable de verdad por primera vez; SP04 es el que abre toda la
-rama del algoritmo. Si tienes una sesión larga por delante, empieza por SP04;
-si tienes una tarde suelta, cierra SP03.
+Dijkstra y `AbstractDistance` se han verificado además contra una
+implementación independiente (Bellman-Ford) en los 10 mapas oficiales y en
+cientos de grafos aleatorios, y el desempate por `priority` contra fuerza bruta.
+
+**Lo siguiente que toca es SP06** (`ReservationTable`). Usa
+`graph.connection_between()` para obtener la conexión de un movimiento y
+`zone.max_drones` (que ya es `UNLIMITED` en `start_hub`/`end_hub`) para la
+capacidad.
 
 ## Deuda técnica registrada
 
 Cosas que ya sabemos que hay que corregir, con el subproyecto donde toca
 hacerlo. No son bugs "por descubrir": están localizados y documentados.
 
-| Deuda | Dónde | Se arregla en |
-|---|---|---|
-| `max_drones` negativo en `start_hub`/`end_hub` da error; el subject dice que se ignora | `map_parser.py` | [SP02](./build/SP02-parser.md#deuda-conocida) |
-| Falta de `start_hub`/`end_hub` lanza `ValueError` pelado, no `MapParseError` | `map_parser.py` | [SP02](./build/SP02-parser.md#deuda-conocida) |
-| Coordenadas negativas se rechazan; el subject solo exige que sean enteras | `map_parser.py` | [SP02](./build/SP02-parser.md#deuda-conocida) |
-| `zone_type` es un `str` validado contra un `set`, no un `Enum` | `zone.py` | [SP01](./build/SP01-modelo-dominio.md#decisiones-tomadas) |
-| `Zone` no expone `movement_cost()` ni `is_traversable()` | `zone.py` | [SP04](./build/SP04-dijkstra.md) |
-| `main.py` no acepta argumentos ni lee ficheros | `main.py` | [SP03](./build/SP03-cli-y-errores.md) |
-| Los mensajes de error del parser mezclan español e inglés | `map_parser.py` | [SP03](./build/SP03-cli-y-errores.md) |
+Ninguna pendiente.
+
+Resuelto antes de SP06: `zone_type` como `Enum ZoneType`, `max_drones` ignorado en start/end, errores de
+archivo como `MapValidationError`, coordenadas negativas, `movement_cost()` /
+`is_traversable()`, CLI real, mensajes de error en inglés, fichero vacío sin
+traceback, metadatos estrictos, `start_hub`/`end_hub` no `blocked`, vecinos en
+O(1), `.pyc` fuera de git y `docs/build/` fuera del `.gitignore`.

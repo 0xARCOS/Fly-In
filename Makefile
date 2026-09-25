@@ -3,7 +3,7 @@ PYTHON      := $(VENV)/bin/python
 PIP         := $(VENV)/bin/pip
 MAP         ?= maps/valid/linear.txt
 
-.PHONY: install run debug lint lint-strict test clean
+.PHONY: install run debug lint lint-strict test clean fclean
 
 install:
 	python3 -m venv $(VENV)
@@ -29,5 +29,9 @@ test:
 	$(PYTHON) -m pytest
 
 clean:
-	rm -rf $(VENV) .mypy_cache .pytest_cache *.egg-info
-	find . -type d -name "__pycache__" -exec rm -rf {} +
+	rm -rf .mypy_cache .pytest_cache *.egg-info
+	find . -path ./$(VENV) -prune -o -type d -name "__pycache__" \
+		-exec rm -rf {} +
+
+fclean: clean
+	rm -rf $(VENV)
