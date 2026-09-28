@@ -79,7 +79,7 @@ función run():
 
         # (a) replanificar al inicio de cada media ventana
         si turno % (W // 2) == 0:
-            tabla.clear_from(turno)
+            tabla.clear_from(turno, keep=ids_en_transito)
             para cada dron en orden_de_prioridad(drones_activos):
                 dron.path ← pathfinder.find_path(dron, turno)
                 grabar dron.path en la tabla
@@ -151,7 +151,7 @@ aquí vale su peso en oro.
 
 ```python
 if turn % (self.window // 2) == 0:
-    self.table.clear_from(turn)
+    self.table.clear_from(turn, keep=in_transit_ids)
     for drone in self._planning_order(active_drones):
         drone.path = self.pathfinder.find_path(drone, turn)
         self._record(drone.path)
@@ -165,9 +165,10 @@ principio que el *receding horizon control*.
 ⚠️ **No lo des por sentado — los drones `IN_TRANSIT` no se replanifican**
 Un dron en el aire tiene su llegada comprometida: no puedes darle una ruta
 nueva a mitad de trayecto porque no puede parar ni dar media vuelta. Exclúyelos
-del bucle de replanificación y respeta la reserva que ya tienen. Si los incluyes,
-`clear_from(turno)` borrará la reserva de su zona de aterrizaje y otro dron
-podrá ocuparla — dejando al primero sin sitio donde llegar.
+del bucle de replanificación y respeta la reserva que ya tienen, pasando sus ids
+en `keep`. Sin `keep`, `clear_from(turno)` borraría la reserva de su zona de
+aterrizaje y otro dron podría ocuparla — dejando al primero sin sitio donde
+llegar.
 
 Es un bug sutil, devastador, y **muy** difícil de diagnosticar a posteriori.
 

@@ -21,7 +21,7 @@ Ejecuta todo con `make test`.
 | `test/test_cli.py` | [SP03](./build/SP03-cli-y-errores.md) | Fichero inexistente / sin permisos / vacío dan mensaje limpio y código de salida ≠ 0, nunca un traceback; `end_hub` inalcanzable se detecta; `--window` ≤ 0 se rechaza ✅ |
 | `test/test_dijkstra.py` | [SP04](./build/SP04-dijkstra.md) | Ruta conocida a mano; `blocked` nunca aparece; `priority` gana los empates; grafo sin ruta devuelve "sin ruta", no excepción ✅ |
 | `test/test_abstract_distance.py` | [SP05](./build/SP05-heuristica-abstracta.md) | `h(end)==0`; `restricted` suma 2; zona aislada es inalcanzable; coincide con Dijkstra ✅ |
-| `test/test_reservation_table.py` | [SP06](./build/SP06-tabla-reservas.md) | Capacidades de zona y enlace; `start`/`end` sin límite; tránsito ocupa 2 turnos; `would_swap`; `clear_from` |
+| `test/test_reservation_table.py` | [SP06](./build/SP06-tabla-reservas.md) | Capacidades de zona y enlace; `start`/`end` sin límite; tránsito ocupa 2 turnos; `would_swap` (también en el 2.º turno de un tránsito); `clear_from` con `keep` ✅ |
 | `test/test_whca.py` | [SP07](./build/SP07-whca.md) | Un dron replica a Dijkstra; dos drones ante un cuello de botella se alternan; ruta parcial al agotar la ventana |
 | `test/test_simulator.py` | [SP08](./build/SP08-drone-y-simulador.md) | Todos llegan; ninguna ocupación violada en ningún turno; el resultado no depende del orden de la lista de drones |
 | `test/test_output_format.py` | [SP09](./build/SP09-formato-salida.md) | Formato exacto de línea; drones quietos omitidos; entregados dejan de aparecer; tránsito imprime la conexión |

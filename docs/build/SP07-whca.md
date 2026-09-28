@@ -83,9 +83,8 @@ función find_path(dron, turno_inicial, W):
             si no vecino.is_traversable(): saltar
             si no heuristica.is_reachable(vecino): saltar
             coste ← vecino.movement_cost()                    # 1 o 2
-            si no tabla.link_has_room(conexión, n.turn): saltar
-            si tabla.would_swap(n.zone, vecino, n.turn): saltar
-            si no tabla.zone_has_room(vecino, n.turn + coste): saltar
+            # conexión y sentido en cada turno del trayecto + zona de llegada
+            si no tabla.can_move(n.zone, vecino, n.turn): saltar
             push SearchNode(f = n.g + coste + h(vecino),
                             g = n.g + coste,
                             turn = n.turn + coste,
@@ -195,10 +194,10 @@ misma tabla vacía y obtienes N copias de la misma ruta: todos chocando.
 ```python
 for step in path:
     if step.connection is None:
-        table.reserve_wait(step.zone, step.arrival_turn)
+        table.reserve_wait(drone.id, step.zone, step.arrival_turn)
     else:
-        table.reserve_move(prev_zone, step.zone, step.connection,
-                           step.arrival_turn - step.cost, step.cost)
+        table.reserve_move(drone.id, prev_zone, step.zone,
+                           step.arrival_turn - step.cost)
 ```
 
 ---

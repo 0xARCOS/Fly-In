@@ -37,6 +37,7 @@ flowchart TD
     style SP03 fill:#d5f5d5
     style SP04 fill:#d5f5d5
     style SP05 fill:#d5f5d5
+    style SP06 fill:#d5f5d5
 ```
 
 Verde = hecho · amarillo = hecho con deuda anotada · sin color = pendiente.
@@ -69,7 +70,7 @@ hacerse en cualquier momento. Solo SP07 las une.
 
 ## Estado actual del repositorio
 
-Lo que ya existe, verificado ejecutando el código (116 tests verdes,
+Lo que ya existe, verificado ejecutando el código (141 tests verdes,
 `make lint` y `make lint-strict` limpios, `flake8` a 79 columnas):
 
 ```
@@ -87,7 +88,8 @@ fly_in/
 │   └── map_parser.py        # SP02 ✅ parser con metadatos estrictos
 └── pathfinding/
     ├── dijkstra.py          # SP04 ✅ ruta de un dron + distances_from()
-    └── abstract_distance.py # SP05 ✅ heurística h(n) por Dijkstra inverso
+    ├── abstract_distance.py # SP05 ✅ heurística h(n) por Dijkstra inverso
+    └── reservation_table.py # SP06 ✅ ocupación espacio-temporal
 maps/
 ├── valid/         7 mapas pequeños, uno por comportamiento
 ├── errors/        10 mapas, uno por regla de validación
@@ -96,17 +98,18 @@ test/
 ├── test_parser.py            # SP01/SP02
 ├── test_cli.py               # SP03
 ├── test_dijkstra.py          # SP04
-└── test_abstract_distance.py # SP05
+├── test_abstract_distance.py # SP05
+└── test_reservation_table.py # SP06
 ```
 
 Dijkstra y `AbstractDistance` se han verificado además contra una
 implementación independiente (Bellman-Ford) en los 10 mapas oficiales y en
 cientos de grafos aleatorios, y el desempate por `priority` contra fuerza bruta.
 
-**Lo siguiente que toca es SP06** (`ReservationTable`). Usa
-`graph.connection_between()` para obtener la conexión de un movimiento y
-`zone.max_drones` (que ya es `UNLIMITED` en `start_hub`/`end_hub`) para la
-capacidad.
+**Lo siguiente que toca es SP07** (`WhcaPathfinder`). Pregunta a la tabla con
+`can_move(frm, to, turn)` y `zone_has_room(zone, turn + 1)`, y graba cada ruta
+con `reserve_move` / `reserve_wait` pasando el id del dron. La convención de
+tiempo está en [SP06](./build/SP06-tabla-reservas.md#convención-de-tiempo-compartida-con-sp07-y-sp08).
 
 ## Deuda técnica registrada
 

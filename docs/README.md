@@ -37,6 +37,8 @@ hecha y no vuelves a tocarla salvo que cambie el diseño.
 | [`04-algoritmo.md`](./04-algoritmo.md) | Teoría: Dijkstra → Cooperative A\* → WHCA\*. Por qué cada escalón existe |
 | [`05-plan-de-pruebas.md`](./05-plan-de-pruebas.md) | Qué se prueba en cada subproyecto, mapas de prueba y matriz de benchmarks |
 | [`06-glosario.md`](./06-glosario.md) | Todos los términos del proyecto definidos, sin dar nada por sabido |
+| [`07-diagramas.md`](./07-diagramas.md) | Diagramas de flujo de cada subproyecto hecho (SP00–SP06) y de cómo se relacionan: dependencias, flujo de datos e imports |
+| [`08-narrativa-sp06-sp07.md`](./08-narrativa-sp06-sp07.md) | SP06 y SP07 contados como una sola historia: qué regla del subject pide cada función y cómo se nota en la ejecución, con ejemplos turno a turno |
 | [`Fly-In.pdf`](./Fly-In.pdf) | El subject original. Ante cualquier contradicción con esta guía, **manda el PDF** |
 
 ## Subproyectos
@@ -49,8 +51,8 @@ hecha y no vuelves a tocarla salvo que cambie el diseño.
 | [`SP03`](./build/SP03-cli-y-errores.md) | Lectura de fichero, argumentos de línea de comandos, errores limpios | ✅ hecho |
 | [`SP04`](./build/SP04-dijkstra.md) | `Dijkstra`: ruta óptima de **un** dron | ✅ hecho |
 | [`SP05`](./build/SP05-heuristica-abstracta.md) | `AbstractDistance`: la heurística `h(n)` | ✅ hecho |
-| [`SP06`](./build/SP06-tabla-reservas.md) | `ReservationTable`: ocupación espacio-temporal | ▶️ siguiente |
-| [`SP07`](./build/SP07-whca.md) | `WhcaPathfinder`: búsqueda cooperativa con ventana | ⬜ pendiente |
+| [`SP06`](./build/SP06-tabla-reservas.md) | `ReservationTable`: ocupación espacio-temporal | ✅ hecho |
+| [`SP07`](./build/SP07-whca.md) | `WhcaPathfinder`: búsqueda cooperativa con ventana | ▶️ siguiente |
 | [`SP08`](./build/SP08-drone-y-simulador.md) | `Drone` + `Simulator`: el bucle turno a turno | ⬜ pendiente |
 | [`SP09`](./build/SP09-formato-salida.md) | `OutputFormatter`: la salida exacta del subject | ⬜ pendiente |
 | [`SP10`](./build/SP10-visualizacion.md) | Render en terminal a color (y gráfico opcional) | ⬜ pendiente |
