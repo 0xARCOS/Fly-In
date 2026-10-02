@@ -26,8 +26,10 @@ challenger's 45 turns with **43**.
 
 Output follows the subject exactly on `stdout`. The simulation plays in a
 **pygame window** while the terminal narrates every turn as a colored event
-log with drone colors and a legend. Navigate the simulation turn by turn with
-arrow keys (`←`/`→`), jump to start/end (`Home`/`End`), or use `SPACE` to pause.
+log with drone colors and a legend. The **terminal-only HUD** (`--view hud`)
+offers a full-screen display of the entire map with live drone tracking. 
+Navigate the pygame window turn by turn with arrow keys (`←`/`→`), jump to 
+start/end (`Home`/`End`), or use `SPACE` to pause.
 
 ## Instructions
 
@@ -37,10 +39,11 @@ same `import pygame` API), for the graphical window; `flake8`, `mypy` and
 `pytest` for development. `make install` installs all of them in `.venv`.
 
 ```console
-$ make                                           # main menu: every target + level select
 $ make install                                   # creates .venv and installs everything
+$ make                                           # interactive menu: every target + level select
 $ make run MAP=maps/oficial_maps/easy/01_linear_path.txt
 $ make run MAP=maps/valid/bottleneck.txt ARGS="--delay 1 --metrics"
+$ make hud MAP=maps/oficial_maps/medium/02_circular_loop.txt   # terminal-only HUD
 $ make bench                                     # official benchmarks + config comparison
 $ make test                                      # test suite
 $ make lint && make lint-strict                  # flake8 + mypy (+ --strict)
@@ -62,9 +65,10 @@ $ .venv/bin/python -m fly_in.main MAP [options]
 | Option | Effect |
 |---|---|
 | `-w N`, `--window N` | WHCA\* window in turns (default 8) |
-| `--view V` | `window`: pygame window + event log · `log`: event log only · `auto` (default): `window` if display available, else `log` |
-| `-d S`, `--delay S` | Seconds per turn (defaults: window 0.8, log 0.25; `0` = as fast as possible) |
+| `--view V` | `window`: pygame window + event log · `log`: event log only · `hud`: full-screen terminal HUD · `auto` (default): `window` if display available, else `log` |
+| `-d S`, `--delay S` | Seconds per turn (defaults: window 0.8, log 0.25, hud 0.4; `0` = as fast as possible) |
 | `--metrics` | Print secondary metrics on `stderr` |
+| `--capacity-info` | Display zone and connection capacity information during simulation |
 | `-q`, `--quiet` | No visualization at all |
 | `--no-color` | No ANSI colors (also honoured: the `NO_COLOR` variable and non-terminal `stderr`) |
 
@@ -220,6 +224,12 @@ what they show is exactly what `stdout` says.
 **The pygame window.** Everything is drawn with `pygame.draw` primitives
 (lines, polygons, circles, arcs) and text; there are no image files.
 
+It opens on a **mission briefing with a 3-2-1-GO countdown**:
+
+![Mission briefing: 3-2-1-GO countdown](docs/img/window_briefing.png)
+
+During the simulation, the map shows real-time capacity and drone positions:
+
 ![The pygame window, medium/02 turn 5: two full zones and a drone in the air](docs/img/window_medium.png)
 
 - The **map is laid out from the file's own coordinates**. Zones are glowing
@@ -237,9 +247,11 @@ what they show is exactly what `stdout` says.
   travel**, in the moving drone's color; links into `restricted` zones are
   dashed. Deliveries burst into sparks with a "+1", and each WHCA\* replan
   sends a radar ring across the map.
-- It opens on a **mission briefing with a 3-2-1-GO countdown** (the terminal
-  counts down at the same time) and ends on a **MISSION COMPLETE** card with
-  three stars (delivered, no violations, under par) and the metrics.
+
+At completion, you see the **MISSION COMPLETE** card:
+
+![Mission complete card with metrics](docs/img/window_complete.png)
+
 - **Navigate turn by turn**: `←` and `→` move between turns, `Home` and `End`
   jump to start and finish, `PgUp` and `PgDn` skip ±5 turns, `SPACE` toggles
   play/pause, `↑` and `↓` adjust speed. `ESC` or closing the window exits.
@@ -281,7 +293,8 @@ piped.
 
 **Fallbacks.** Without a display or without a terminal (pipes, CI) the run
 uses the event log alone; if pygame is missing or cannot open a window, it
-says so and continues in the terminal. It never waits for a window that
+says so and continues in the terminal. The HUD mode works purely in the 
+terminal and requires no display. The program never waits for a window that
 cannot appear.
 
 **Why it helps.** The subject's output says *what* each drone does, not
@@ -291,6 +304,31 @@ event log colors each drone with its own color and shows a legend, making it
 easy to track individual drones. Together they reveal the *why* of every move,
 and the log gives the exact per-turn detail with the same line as `stdout`, so
 the two can be checked against each other.
+
+## Capacity Monitoring
+
+Use `--capacity-info` to display real-time zone and connection capacity information:
+
+```console
+$ python -m fly_in.main map.txt --capacity-info -q
+
+=== Turn 1 - Zone Capacity ===
+narrow: 1/1 drones
+start: 2/inf drones
+--- Connection Capacity ---
+start-narrow: 1/1 capacity used
+
+=== Turn 2 - Zone Capacity ===
+narrow: 1/1 drones
+start: 1/inf drones
+--- Connection Capacity ---
+narrow-goal: 1/1 capacity used
+start-narrow: 1/1 capacity used
+```
+
+This feature displays each zone's occupancy (current/max drones) and each 
+connection's usage (current/max capacity) per turn, helping analyze how 
+capacity constraints drive the simulation.
 
 ## Resources
 
