@@ -1,4 +1,4 @@
-# SP09 — `OutputFormatter`: la salida del subject ⬜
+# SP09 — `OutputFormatter`: la salida del subject ✅
 
 **Objetivo:** volcar la simulación en el formato textual **exacto** del Cap.
 VII.5. Es la parte que un evaluador compara literalmente, carácter a carácter.
@@ -111,15 +111,15 @@ tu métrica está mal.
 
 ## Tests de cierre (`test/test_output_format.py`)
 
-- [ ] Un movimiento simple da exactamente `D1-roof1`
-- [ ] Un tránsito da `D1-hub-roof1`, y el turno siguiente `D1-roof1`
-- [ ] Dos drones en el mismo turno: `D1-a D2-b`, separados por **un** espacio
-- [ ] Un dron que no se mueve **no aparece** en la línea
-- [ ] Un dron entregado **no aparece** en ninguna línea posterior
-- [ ] Los movimientos salen ordenados por ID
-- [ ] Un turno sin movimientos no produce línea
-- [ ] `linear.txt` completo: la salida coincide con la esperada escrita a mano
-- [ ] Ninguna línea de `stdout` contiene códigos ANSI ni texto que no sea `D<n>-<nombre>`
+- [x] Un movimiento simple da exactamente `D1-roof1`
+- [x] Un tránsito da `D1-hub-roof1`, y el turno siguiente `D1-roof1`
+- [x] Dos drones en el mismo turno: `D1-a D2-b`, separados por **un** espacio
+- [x] Un dron que no se mueve **no aparece** en la línea
+- [x] Un dron entregado **no aparece** en ninguna línea posterior
+- [x] Los movimientos salen ordenados por ID
+- [x] Un turno sin movimientos no produce línea
+- [x] `linear.txt` completo: la salida coincide con la esperada escrita a mano
+- [x] Ninguna línea de `stdout` contiene códigos ANSI ni texto que no sea `D<n>-<nombre>`
 
 El último se comprueba con una expresión regular sobre toda la salida:
 `^D\d+-[^\s]+( D\d+-[^\s]+)*$` por línea. Es la red que garantiza que nada se
@@ -129,11 +129,11 @@ cuela en `stdout`.
 
 ## Criterio de salida
 
-- [ ] Los 9 tests pasan
-- [ ] `make run MAP=maps/valid/linear.txt` produce una salida que puedes
+- [x] Los 9 tests pasan
+- [x] `make run MAP=maps/valid/linear.txt` produce una salida que puedes
       verificar a mano contra el mapa
-- [ ] `stdout` solo contiene líneas de turno
-- [ ] `make lint-strict` pasa
+- [x] `stdout` solo contiene líneas de turno
+- [x] `make lint-strict` pasa
 
 ## Decisiones a anotar
 
@@ -141,3 +141,35 @@ cuela en `stdout`.
 - La salida real de `linear.txt` y `bottleneck.txt` — **guárdala**, va literal en
   la sección *"Example input and expected output"* del `README.md`, que el
   subject exige *(Cap. VIII)*
+
+## Decisiones tomadas
+
+Implementado en `fly_in/output/formatter.py`, probado en
+`test/test_output_format.py` (46 tests). La historia completa está en
+[`10-narrativa-sp09.md`](../10-narrativa-sp09.md).
+
+| Decisión | Alternativa descartada | Por qué |
+|---|---|---|
+| `format_move(move)` recibe un `Move` de SP08, no `(Drone, Step)` | La firma del paso 2 | El `Move` ya dice si el dron acaba el turno en la conexión (`arrives=False`) o en la zona. Con `(Drone, Step)` habría que mirar `drone.state`, que es el estado *después* de aplicar el turno y obliga a razonar sobre cuándo se consulta |
+| Turno sin movimientos → sin línea | Línea vacía | Un turno así deja el mundo idéntico (nadie puede estar en el aire, porque quien lo está aterriza obligatoriamente), así que omitirlo no cambia la legalidad de lo que sigue. Además, el simulador actual no produce ninguno en los 19 mapas |
+| Orden por id ascendente | Orden de la lista | Determinista y comparable en un test; `_apply` ya los devuelve así, y el formateador vuelve a ordenarlos para no depender de ello |
+| `stdout` solo con líneas de turno; todo lo demás, a `stderr` | Resumen al final de `stdout` | `make run > salida.txt` y `wc -l` da el número de turnos. El `Makefile` lleva `@` en `run` para que `make` no cuele el comando en `stdout` |
+| El número de turnos se cuenta con las líneas (`Metrics.turns` cuenta turnos con movimientos) | Un contador aparte | La cifra que reportamos es la que el evaluador puede contar |
+
+Salidas reales, para el `README.md`:
+
+`linear.txt`
+```
+D1-waypoint1
+D1-waypoint2 D2-waypoint1
+D1-goal D2-waypoint2
+D2-goal
+```
+
+`bottleneck.txt`
+```
+D1-narrow
+D1-goal D2-narrow
+D2-goal D3-narrow
+D3-goal
+```

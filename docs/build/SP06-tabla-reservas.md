@@ -176,8 +176,11 @@ Al replanificar en el turno `T` ([SP07](./SP07-whca.md)), las reservas a partir
 de `T` son **predicciones obsoletas** y hay que tirarlas; las anteriores a `T`
 son historia ya ejecutada y se conservan.
 
-Implementado con un único helper, `_cleared()`, que construye un diccionario
-nuevo con las reservas `< turn` más las de los drones de `keep`.
+Implementado con un único helper, `_filtered()`, que construye un diccionario
+nuevo con las reservas `< turn` más las de los drones de `keep`. El mismo
+helper sirve a `release(drone_id, turn)`, que borra solo las reservas de un
+dron de `turn` en adelante: [SP07](./SP07-whca.md#resuelto-en-plan-la-reserva-provisional)
+lo usa para cambiar la reserva provisional de un dron por su ruta real.
 
 ⚠️ **No lo des por sentado — los drones en el aire se conservan con `keep`**
 Un dron que salió hacia una `restricted` en `T-1` sigue en la conexión en `T`

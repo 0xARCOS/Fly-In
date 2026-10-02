@@ -317,3 +317,32 @@ def test_replanning_on_top_of_a_cleared_table_works(
     table.clear_from(5)
     table.reserve_move(2, start, a, 5)
     assert table.zone_occupants(a, 6) == [2]
+
+
+# --- release -------------------------------------------------------------
+
+def test_release_drops_only_that_drone_from_turn_on(
+    graph: Graph, table: ReservationTable
+) -> None:
+    big = z(graph, "big")
+    for turn in (3, 4, 5):
+        table.reserve_wait(1, big, turn)
+        table.reserve_wait(2, big, turn)
+    table.release(1, 4)
+    assert table.zone_occupants(big, 3) == [1, 2]
+    assert table.zone_occupants(big, 4) == [2]
+    assert table.zone_occupants(big, 5) == [2]
+
+
+def test_release_drops_links_and_directions_too(
+    graph: Graph, table: ReservationTable
+) -> None:
+    start, r = z(graph, "start"), z(graph, "r")
+    table.reserve_move(1, start, r, 5)
+    table.release(1, 5)
+    conn = graph.connection_between(start, r)
+    assert table.link_occupants(conn, 5) == []
+    assert table.link_occupants(conn, 6) == []
+    assert not table.would_swap(r, start, 5)
+    assert table.zone_occupants(r, 7) == []
+    table.reserve_move(2, start, r, 5)  # vuelve a caber

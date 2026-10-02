@@ -18,6 +18,14 @@ III.1)*.
 
 ---
 
+> **Estado actual del código.** Las funciones de este subproyecto
+> (`build_parser`, `read_map_file`, `positive_int`, `main`…) viven ahora
+> como `@staticmethod` de la clase `FlyIn` en `fly_in/main.py`, para cumplir
+> *"completely object-oriented"* (Cap. V). El punto de entrada es
+> `FlyIn.main()`. Además de `MapError`, `SimulationError` y `Ctrl+C`, ahora
+> también captura `BrokenPipeError` (salida cortada por `| head`). Ver
+> [`14-cumplimiento-subject.md`](../14-cumplimiento-subject.md).
+
 ## Paso 1 — Los argumentos de línea de comandos
 
 Usa `argparse` de la librería estándar. Te da `--help` gratis, valida tipos y

@@ -1,0 +1,14 @@
+# Dos rutas paralelas de igual coste: los drones deben repartirse, no hacer cola
+nb_drones: 2
+start_hub: start 0 0
+end_hub: goal 3 0
+hub: a1 1 1
+hub: a2 2 1
+hub: b1 1 -1
+hub: b2 2 -1
+connection: start-a1
+connection: a1-a2
+connection: a2-goal
+connection: start-b1
+connection: b1-b2
+connection: b2-goal

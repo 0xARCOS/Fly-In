@@ -12,7 +12,7 @@ Convención de tiempo (compartida con SP07 y SP08):
   ninguna zona en los instantes intermedios: está en el aire.
 """
 
-from typing import AbstractSet, Dict, List, Tuple, TypeVar
+from typing import AbstractSet, Callable, Dict, List, Tuple, TypeVar
 
 from fly_in.models.connection import Connection
 from fly_in.models.graph import Graph
@@ -138,11 +138,24 @@ class ReservationTable:
         Las de los drones en `keep` se conservan enteras: son drones en el
         aire, cuya llegada ya está comprometida y no se puede replanificar.
         """
-        self._zones = self._cleared(self._zones, turn, keep)
-        self._links = self._cleared(self._links, turn, keep)
-        self._moves = self._cleared(self._moves, turn, keep)
+        self._drop_from(turn, lambda drone: drone not in keep)
+
+    def release(self, drone_id: int, turn: int) -> None:
+        """Descarta las reservas de `drone_id` de `turn` en adelante.
+
+        Las de los demás drones no se tocan. Lo usa SP07 para cambiar la
+        reserva provisional de un dron por su ruta real.
+        """
+        self._drop_from(turn, lambda drone: drone == drone_id)
 
     # --- internos ------------------------------------------------------
+
+    def _drop_from(self, turn: int, drop: Callable[[int], bool]) -> None:
+        """Quita de las tres tablas, en las claves >= `turn`, a los drones
+        para los que `drop` es True."""
+        self._zones = self._filtered(self._zones, turn, drop)
+        self._links = self._filtered(self._links, turn, drop)
+        self._moves = self._filtered(self._moves, turn, drop)
 
     @staticmethod
     def _add(table: Dict[Key, List[int]], key: Key, drone_id: int) -> None:
@@ -158,10 +171,10 @@ class ReservationTable:
         occupants.append(drone_id)
 
     @staticmethod
-    def _cleared(
-        table: Dict[Key, List[int]], turn: int, keep: AbstractSet[int]
+    def _filtered(
+        table: Dict[Key, List[int]], turn: int, drop: Callable[[int], bool]
     ) -> Dict[Key, List[int]]:
-        """Copia de `table` sin las reservas >= `turn` salvo las de `keep`.
+        """Copia de `table` sin los drones de `drop` en las claves >= `turn`.
 
         Construye un diccionario nuevo en lugar de borrar mientras recorre:
         borrar durante la iteración lanza RuntimeError.
@@ -171,7 +184,7 @@ class ReservationTable:
             if key[-1] < turn:
                 result[key] = list(occupants)
                 continue
-            kept = [drone for drone in occupants if drone in keep]
+            kept = [drone for drone in occupants if not drop(drone)]
             if kept:
                 result[key] = kept
         return result

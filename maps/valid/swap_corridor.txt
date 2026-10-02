@@ -1,0 +1,13 @@
+# Pasillo de una zona (mid) entre west y east: el caso patológico de WHCA*.
+# El objetivo está al oeste, así que un dron en east solo sale cruzando mid
+# de este a oeste; uno que se aparte hacia east lo cruza en sentido opuesto.
+nb_drones: 2
+start_hub: start 0 0
+end_hub: goal 1 1
+hub: west 1 0
+hub: mid 2 0
+hub: east 3 0
+connection: start-west
+connection: west-goal
+connection: west-mid
+connection: mid-east

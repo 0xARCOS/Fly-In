@@ -1,5 +1,6 @@
 """Tests de la CLI (SP03): ningún input debe acabar en traceback."""
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -25,9 +26,40 @@ def write(tmp_path: Path, content: str) -> str:
 
 
 def test_valid_map_succeeds() -> None:
-    result = run_cli("maps/valid/linear.txt")
+    result = run_cli("maps/valid/linear.txt", "--quiet")
     assert result.returncode == 0
     assert result.stderr == ""
+    assert result.stdout.splitlines() == [
+        "D1-waypoint1",
+        "D1-waypoint2 D2-waypoint1",
+        "D1-goal D2-waypoint2",
+        "D2-goal",
+    ]
+
+
+def test_stdout_holds_only_turn_lines_even_with_visuals() -> None:
+    # Sin terminal (como aquí), el renderer va en modo registro a stderr.
+    result = run_cli("maps/valid/bottleneck.txt", "--metrics")
+    assert result.returncode == 0
+    assert result.stdout.splitlines() == [
+        "D1-narrow", "D1-goal D2-narrow", "D2-goal D3-narrow", "D3-goal",
+    ]
+    assert "MISSION COMPLETE" in result.stderr
+    assert "turns: 4" in result.stderr
+    assert "\033" not in result.stderr
+
+
+def test_window_option_reaches_the_simulator() -> None:
+    result = run_cli("maps/valid/bottleneck.txt", "--window", "1", "-q")
+    assert result.returncode == 0
+    assert len(result.stdout.splitlines()) == 4
+
+
+@pytest.mark.parametrize("delay", ["-1", "abc", "nan"])
+def test_delay_must_be_a_non_negative_number(delay: str) -> None:
+    result = run_cli("maps/valid/linear.txt", "--delay", delay)
+    assert result.returncode == 2
+    assert "Traceback" not in result.stderr
 
 
 @pytest.mark.parametrize(
@@ -77,3 +109,19 @@ def test_window_must_be_positive(window: str) -> None:
     result = run_cli("maps/valid/linear.txt", "--window", window)
     assert result.returncode == 2
     assert "Traceback" not in result.stderr
+
+
+def test_closed_stderr_ends_cleanly() -> None:
+    # `2>&1 >/dev/null | head -1`: el lector se va y escribir en stderr da
+    # BrokenPipeError. Debe acabar con código 1, no con un error de Python.
+    read_end, write_end = os.pipe()
+    os.close(read_end)
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "fly_in.main", "maps/valid/linear.txt",
+             "--view", "log", "--delay", "0"],
+            cwd=ROOT, stdout=subprocess.PIPE, stderr=write_end, timeout=30,
+        )
+    finally:
+        os.close(write_end)
+    assert result.returncode == 1

@@ -22,9 +22,12 @@ Ejecuta todo con `make test`.
 | `test/test_dijkstra.py` | [SP04](./build/SP04-dijkstra.md) | Ruta conocida a mano; `blocked` nunca aparece; `priority` gana los empates; grafo sin ruta devuelve "sin ruta", no excepción ✅ |
 | `test/test_abstract_distance.py` | [SP05](./build/SP05-heuristica-abstracta.md) | `h(end)==0`; `restricted` suma 2; zona aislada es inalcanzable; coincide con Dijkstra ✅ |
 | `test/test_reservation_table.py` | [SP06](./build/SP06-tabla-reservas.md) | Capacidades de zona y enlace; `start`/`end` sin límite; tránsito ocupa 2 turnos; `would_swap` (también en el 2.º turno de un tránsito); `clear_from` con `keep` ✅ |
-| `test/test_whca.py` | [SP07](./build/SP07-whca.md) | Un dron replica a Dijkstra; dos drones ante un cuello de botella se alternan; ruta parcial al agotar la ventana |
-| `test/test_simulator.py` | [SP08](./build/SP08-drone-y-simulador.md) | Todos llegan; ninguna ocupación violada en ningún turno; el resultado no depende del orden de la lista de drones |
-| `test/test_output_format.py` | [SP09](./build/SP09-formato-salida.md) | Formato exacto de línea; drones quietos omitidos; entregados dejan de aparecer; tránsito imprime la conexión |
+| `test/test_whca.py` | [SP07](./build/SP07-whca.md) | Un dron replica a Dijkstra; dos drones ante un cuello de botella se alternan; ruta parcial al agotar la ventana ✅ |
+| `test/test_simulator.py` | [SP08](./build/SP08-drone-y-simulador.md) | Todos llegan; ninguna ocupación violada en ningún turno; el resultado no depende del orden de la lista de drones; validador de invariantes en los 19 mapas ✅ |
+| `test/test_output_format.py` | [SP09](./build/SP09-formato-salida.md) | Formato exacto de línea; drones quietos omitidos; entregados dejan de aparecer; tránsito imprime la conexión ✅ |
+| `test/test_visualization.py` | [SP10](./build/SP10-visualizacion.md) | Sin ANSI con `--no-color`; cualquier `color=` se resuelve; cursor siempre devuelto; el fotograma muestra capacidades y tránsitos; la grabación tiene un fotograma por turno ✅ |
+| `test/test_session.py` | [SP10](./build/SP10-visualizacion.md) | Elección de vista; log turno a turno; escena sin pygame; la ventana dibuja los 19 mapas, avanza con el log, se puede cerrar, cae a la terminal sin pygame o sin vídeo y no escribe en `stdout` ✅ |
+| `test/test_metrics.py` | [SP11](./build/SP11-benchmarks-y-readme.md) | Métricas calculadas a mano; los 10 objetivos oficiales se cumplen con la configuración por defecto ✅ |
 
 ---
 
@@ -63,22 +66,22 @@ plausible.
 
 ## 3. Matriz de benchmarks oficiales *(Cap. VII.7)*
 
-Se rellena en [SP11](./build/SP11-benchmarks-y-readme.md), ejecutando cada mapa
-de referencia del subject. Anota también el tiempo de cálculo: el subject
+Rellenada en [SP11](./build/SP11-benchmarks-y-readme.md) con `make bench`
+(W = 8, orden por id). Anota también el tiempo de cálculo: el subject
 pregunta por eficiencia, no solo por turnos.
 
 | Categoría | Mapa | Drones | Objetivo | Turnos obtenidos | Tiempo | ¿Cumple? |
 |---|---|---|---|---|---|---|
-| Fácil | Linear path | 2 | ≤ 6 | | | |
-| Fácil | Simple fork | 4 | ≤ 8 | | | |
-| Fácil | Basic capacity | 4 | ≤ 6 | | | |
-| Media | Dead end trap | 5 | ≤ 12 | | | |
-| Media | Circular loop | 6 | ≤ 15 | | | |
-| Media | Priority puzzle | 5 | ≤ 12 | | | |
-| Difícil | Maze nightmare | 8 | ≤ 30 | | | |
-| Difícil | Capacity hell | 12 | ≤ 35 | | | |
-| Difícil | Ultimate challenge | 15 | ≤ 45 | | | |
-| Bonus | The Impossible Dream | 25 | batir 45 | | | |
+| Fácil | Linear path | 2 | ≤ 6 | 4 | < 1 ms | ✅ |
+| Fácil | Simple fork | 4 | ≤ 8 | 4 | 1 ms | ✅ |
+| Fácil | Basic capacity | 4 | ≤ 6 | 4 | < 1 ms | ✅ |
+| Media | Dead end trap | 5 | ≤ 12 | 8 | 1 ms | ✅ |
+| Media | Circular loop | 6 | ≤ 15 | 15 | 6 ms | ✅ (óptimo con la lectura estricta) |
+| Media | Priority puzzle | 5 | ≤ 12 | 7 | 1 ms | ✅ |
+| Difícil | Maze nightmare | 8 | ≤ 30 | 13 | 10 ms | ✅ |
+| Difícil | Capacity hell | 12 | ≤ 35 | 16 | 23 ms | ✅ |
+| Difícil | Ultimate challenge | 15 | ≤ 45 | 26 | 76 ms | ✅ |
+| Bonus | The Impossible Dream | 25 | batir 45 | 43 | 247 ms | ✅ |
 
 ### Comparativa de parámetros
 

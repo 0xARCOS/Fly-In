@@ -1,4 +1,4 @@
-# SP10 — Visualización ⬜
+# SP10 — Visualización ✅
 
 **Objetivo:** dar feedback visual de la simulación. **Es parte obligatoria**,
 no bonus.
@@ -176,10 +176,10 @@ entorno gráfico y el proyecto entero deja de arrancar.
 La visualización es difícil de testear y tampoco tiene mucho sentido hacerlo a
 fondo. Lo mínimo que sí conviene:
 
-- [ ] `--no-color` no emite ningún código ANSI
-- [ ] Un `color=` desconocido no lanza excepción
-- [ ] Nada de lo que emite el renderer aparece en `stdout`
-- [ ] Un mapa sin ningún `color=` se renderiza correctamente
+- [x] `--no-color` no emite ningún código ANSI
+- [x] Un `color=` desconocido no lanza excepción
+- [x] Nada de lo que emite el renderer aparece en `stdout`
+- [x] Un mapa sin ningún `color=` se renderiza correctamente
 
 Lo demás se valida a ojo, que es exactamente el criterio de salida.
 
@@ -187,11 +187,11 @@ Lo demás se valida a ojo, que es exactamente el criterio de salida.
 
 ## Criterio de salida
 
-- [ ] Ejecutas `bottleneck.txt` y **se ve** por qué los drones se turnan
-- [ ] Los colores del mapa se reflejan en pantalla
-- [ ] `--no-color` y las tuberías dan salida limpia
-- [ ] `stdout` sigue conteniendo solo las líneas de turno
-- [ ] Una captura guardada para el `README.md`
+- [x] Ejecutas `bottleneck.txt` y **se ve** por qué los drones se turnan
+- [x] Los colores del mapa se reflejan en pantalla
+- [x] `--no-color` y las tuberías dan salida limpia
+- [x] `stdout` sigue conteniendo solo las líneas de turno
+- [x] Una captura guardada para el `README.md`
 
 ## Decisiones a anotar
 
@@ -199,3 +199,30 @@ Lo demás se valida a ojo, que es exactamente el criterio de salida.
   documentar *cómo mejora la experiencia*, no solo que existe *(Cap. VIII)*
 - ¿Terminal, gráfico o ambos? Y si hay gráfico, cómo se degrada sin la librería
 - Cómo resuelves los colores desconocidos
+
+## Decisiones tomadas
+
+Implementado en `fly_in/visualization/` (`palette.py`, `canvas.py`,
+`terminal_view.py`, `recorder.py`, `scene.py`, `pygame_view.py`,
+`event_log.py` y `session.py`), probado en `test/test_visualization.py` y
+`test/test_session.py` (101 tests). La historia completa, con capturas,
+está en [`11-narrativa-sp10.md`](../11-narrativa-sp10.md).
+
+| Decisión | Alternativa descartada | Por qué |
+|---|---|---|
+| **Por defecto, ventana pygame + terminal a la vez** (`--view auto` → `window`): la animación en la ventana y el log de eventos en la terminal, turno a turno | La animación en el navegador (segunda versión: servidor local + JavaScript) | Todo el código entregado es Python y se puede defender línea a línea. La versión del navegador se conserva fuera del repositorio |
+| **pygame-ce** en `dependencies`, importado de forma perezosa dentro de `Session._play_window` | pygame 2.6.1; import al principio del módulo | pygame 2.6.1 trae las fuentes rotas en Python 3.14. Con el import perezoso, sin pygame todo lo demás funciona y la ventana cae a la terminal |
+| Un solo hilo: se escribe el bloque del turno `k` y se anima el turno `k` | Hilos o un proceso aparte | pygame exige manejar la ventana desde el hilo que la crea, y con un bucle no hay condiciones de carrera |
+| `PYGAME_HIDE_SUPPORT_PROMPT` antes del import | — | pygame saluda por `stdout` al importarse: rompería la salida del subject |
+| Simular primero y **enseñar después** a ritmo de `--delay` (`Session.play`) | Animar mientras se simula | La simulación dura milisegundos; así el ritmo lo marca solo la presentación, igual para las dos pantallas |
+| `auto` elige la ventana solo con terminal **y** pantalla gráfica; si pygame falla o se cierra la ventana, sigue solo en la terminal | Intentar abrirla siempre | Nunca colgarse ni fallar (Cap. III.1): tuberías, CI y tests usan el log |
+| `Scene` precalcula los fotogramas y no importa pygame | Calcular posiciones en cada fotograma | La ventana dibuja a 60 fps; así el bucle solo consulta listas, y la escena se prueba sin pantalla |
+| Se conserva el HUD (`--view hud`, `make hud`) | — | Para ver el mapa sin ventana gráfica |
+| El renderer es un **observador** del simulador (`on_turn`) | Que el simulador llame a `print` | El simulador no sabe nada de pantallas; el renderer solo lee drones y `Move`. El tiempo que pasa dentro del observador (las pausas de la animación) se descuenta del tiempo de cálculo |
+| Mapa dibujado con las coordenadas `x`/`y` del archivo, escala ajustada al ancho | Lista de zonas | La lista del paso 3 no enseña la topología; el mapa sí, y las coordenadas existen para esto |
+| Forma de la zona según el tipo (`( )`, `< >`, `[ ]`, `▓▓▓`, `{ }`) | Solo color | Con `--no-color` sigue distinguiéndose el tipo |
+| Colores: tabla de nombres → RGB, `#rrggbb`, `rainbow` animado y tono derivado de un hash para lo desconocido | Color por defecto para lo desconocido | Nunca falla y dos zonas con el mismo color raro se ven iguales. Truecolor si `COLORTERM` lo anuncia; si no, el más cercano de 16 |
+| Tres niveles de silencio: en vivo (terminal), registro corto (tubería o fichero) y nada (`-q`) | Siempre animar | Los códigos ANSI en un fichero son basura; `NO_COLOR` y `--no-color` quitan el color incluso en terminal |
+| El cursor se oculta y se devuelve con un gestor de contexto | Devolverlo al final | Si la simulación falla o se pulsa Ctrl+C, el cursor vuelve igual (hay un test) |
+| La cabecera repite la línea de `stdout` del turno | — | Une lo que se ve con lo que se entrega |
+| PAR en los mapas oficiales | — | El objetivo del subject convierte la pantalla final en un "¿lo he conseguido?" |

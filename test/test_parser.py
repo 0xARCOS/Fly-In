@@ -7,7 +7,7 @@ import pytest
 from fly_in.models.errors import MapError, MapParseError, MapValidationError
 from fly_in.models.graph import Graph
 from fly_in.models.zone import UNLIMITED, Zone, ZoneType
-from fly_in.parsing.map_parser import MapParser, clean_lines
+from fly_in.parsing.map_parser import MapParser
 
 MAPS_DIR = Path(__file__).resolve().parent.parent / "maps"
 HEADER = "nb_drones: 2\nstart_hub: s 0 0\nend_hub: e 2 0\n"
@@ -100,7 +100,9 @@ def test_nb_drones_can_only_appear_once() -> None:
 
 
 def test_comments_and_blank_lines_keep_original_line_numbers() -> None:
-    lines = clean_lines("# c\n\nnb_drones: 1  # tail\n   \nhub: a 0 0\n")
+    lines = MapParser.clean_lines(
+        "# c\n\nnb_drones: 1  # tail\n   \nhub: a 0 0\n"
+    )
     assert lines == [(3, "nb_drones: 1"), (5, "hub: a 0 0")]
 
 

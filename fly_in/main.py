@@ -20,12 +20,15 @@ from fly_in.output.formatter import OutputFormatter
 from fly_in.pathfinding.abstract_distance import AbstractDistance
 from fly_in.simulation.errors import SimulationError
 from fly_in.simulation.metrics import Metrics
-from fly_in.simulation.simulator import ObserverGroup, SimulationObserver, Simulator
+from fly_in.simulation.simulator import (
+    ObserverGroup,
+    SimulationObserver,
+    Simulator,
+)
 from fly_in.visualization.palette import Painter
 from fly_in.visualization.recorder import ReplayRecorder
 from fly_in.visualization.session import (
     DEFAULT_DELAYS,
-    VIEWS,
     Run,
     Session,
 )
@@ -80,7 +83,9 @@ class FlyIn:
             help="Disable the real-time visualization"
         )
         parser.add_argument(
-            "--view", choices=VIEWS, default="auto",
+            "--view",
+            choices=("auto", "window", "log", "none"),
+            default="auto",
             help="window: pygame window + event log here; "
                  "log: event log only; hud: full-screen terminal HUD "
                  "(default: window if there is a display, else log)"
@@ -95,7 +100,12 @@ class FlyIn:
         )
         parser.add_argument(
             "--capacity-info", action="store_true",
-            help="Display zone and connection capacity information during simulation"
+            help="Display zone and connection capacity "
+                 "information during simulation"
+        )
+        parser.add_argument(
+            "--color-output", action="store_true",
+            help="Print colored trace output on stderr"
         )
         return parser
 
@@ -231,6 +241,18 @@ class FlyIn:
         for line in OutputFormatter.format_trace(trace):
             print(line)
         sys.stdout.flush()
+
+        # Colored output if requested
+        if args.color_output:
+            try:
+                print("\n=== Colored Trace ===", file=sys.stderr)
+                for i, line in enumerate(
+                    OutputFormatter.format_trace_colored(trace, paint),
+                    start=1
+                ):
+                    print(f"Turn {i:3d}: {line}", file=sys.stderr)
+            except BrokenPipeError:
+                pass  # stderr closed, ignore
 
         if args.metrics:
             FlyIn.print_metrics(metrics)

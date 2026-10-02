@@ -70,13 +70,16 @@ hacerse en cualquier momento. Solo SP07 las une.
 
 ## Estado actual del repositorio
 
-Lo que ya existe, verificado ejecutando el código (141 tests verdes,
-`make lint` y `make lint-strict` limpios, `flake8` a 79 columnas):
+**Proyecto completo: SP00–SP11 hechos.** Verificado ejecutando el código (433
+tests verdes, `make lint` y `make lint-strict` limpios, `flake8` a 79
+columnas) y repetido en una copia limpia del repositorio.
 
 ```
 fly_in/
-├── main.py                  # SP03 ✅ argumentos, lectura segura, errores
-│                            #        limpios, end_hub inalcanzable detectado
+├── main.py                  # SP03/SP09/SP10 ✅ argumentos, errores limpios,
+│                            #        stdout solo con líneas de turno, HUD,
+│                            #        --view, --metrics, --delay
+├── benchmarks.py            # SP11 ✅ objetivos oficiales + make bench
 ├── models/
 │   ├── zone.py              # SP01 ✅ Zone, ZoneType, UNLIMITED, movement_cost(),
 │   │                        #        is_traversable()
@@ -86,30 +89,59 @@ fly_in/
 │   └── errors.py            # SP02 ✅ MapError, MapParseError, MapValidationError
 ├── parsing/
 │   └── map_parser.py        # SP02 ✅ parser con metadatos estrictos
-└── pathfinding/
-    ├── dijkstra.py          # SP04 ✅ ruta de un dron + distances_from()
-    ├── abstract_distance.py # SP05 ✅ heurística h(n) por Dijkstra inverso
-    └── reservation_table.py # SP06 ✅ ocupación espacio-temporal
+├── pathfinding/
+│   ├── dijkstra.py          # SP04 ✅ ruta de un dron + distances_from()
+│   ├── abstract_distance.py # SP05 ✅ heurística h(n) por Dijkstra inverso
+│   ├── reservation_table.py # SP06 ✅ ocupación espacio-temporal + release()
+│   └── whca.py              # SP07 ✅ WhcaPathfinder, Step, criterios de orden
+├── simulation/
+│   ├── drone.py             # SP08 ✅ Drone, DroneState
+│   ├── simulator.py         # SP08 ✅ Simulator, Move, observadores: bucle en
+│   │                        #        dos fases, replanificación, verificación
+│   ├── metrics.py           # SP11 ✅ métricas secundarias desde la traza
+│   └── errors.py            # SP08 ✅ SimulationError
+├── output/
+│   └── formatter.py         # SP09 ✅ OutputFormatter
+└── visualization/
+    ├── palette.py           # SP10 ✅ colores (cualquier nombre), ANSI, 16/24 bits
+    ├── canvas.py            # SP10 ✅ el mapa en caracteres, con coordenadas
+    ├── terminal_view.py     # SP10 ✅ HUD animado: inicio, turnos, final
+    ├── recorder.py          # SP10 ✅ grabador: posiciones y línea por turno
+    ├── scene.py             # SP10 ✅ fotogramas precalculados (sin pygame)
+    ├── pygame_view.py       # SP10 ✅ la ventana pygame
+    ├── event_log.py         # SP10 ✅ log de eventos de la terminal
+    └── session.py           # SP10 ✅ elige la vista; ventana y log a la par
+scripts/
+└── loading.sh               # SP11 ✅ pantallas de carga del Makefile (stderr)
 maps/
-├── valid/         7 mapas pequeños, uno por comportamiento
+├── valid/         9 mapas pequeños, uno por comportamiento
 ├── errors/        10 mapas, uno por regla de validación
 └── oficial_maps/  los 10 mapas oficiales (easy/medium/hard/challenger)
 test/
 ├── test_parser.py            # SP01/SP02
-├── test_cli.py               # SP03
+├── test_cli.py               # SP03 (+ stdout limpio, --delay, stderr cerrado)
 ├── test_dijkstra.py          # SP04
 ├── test_abstract_distance.py # SP05
-└── test_reservation_table.py # SP06
+├── test_reservation_table.py # SP06
+├── test_whca.py              # SP07
+├── test_simulator.py         # SP08 + validador de invariantes
+├── test_output_format.py     # SP09
+├── test_visualization.py     # SP10
+├── test_session.py           # SP10 · vistas, log, escena y ventana pygame
+└── test_metrics.py           # SP11 + objetivos oficiales
 ```
 
 Dijkstra y `AbstractDistance` se han verificado además contra una
 implementación independiente (Bellman-Ford) en los 10 mapas oficiales y en
 cientos de grafos aleatorios, y el desempate por `priority` contra fuerza bruta.
 
-**Lo siguiente que toca es SP07** (`WhcaPathfinder`). Pregunta a la tabla con
-`can_move(frm, to, turn)` y `zone_has_room(zone, turn + 1)`, y graba cada ruta
-con `reserve_move` / `reserve_wait` pasando el id del dron. La convención de
-tiempo está en [SP06](./build/SP06-tabla-reservas.md#convención-de-tiempo-compartida-con-sp07-y-sp08).
+**Resultados:** los 10 mapas oficiales cumplen su objetivo (tabla completa en
+[SP11](./build/SP11-benchmarks-y-readme.md#decisiones-tomadas)); el challenger
+se resuelve en 43 turnos.
+
+**Antes de entregar:** confirmar el login de la primera línea del
+[`README.md`](../README.md) (`ariarcos`) y revisar la sección *How AI was
+used*.
 
 ## Deuda técnica registrada
 
@@ -117,6 +149,11 @@ Cosas que ya sabemos que hay que corregir, con el subproyecto donde toca
 hacerlo. No son bugs "por descubrir": están localizados y documentados.
 
 Ninguna pendiente.
+
+Resuelto en SP07: un dron que planificaba antes podía reservar entrar en la
+zona de otro que aún no había planificado y dejarlo sin salida. `plan()` hace
+ahora una reserva provisional de la posición de todos antes de planificar. Ver
+[SP07](./build/SP07-whca.md#resuelto-en-plan-la-reserva-provisional).
 
 Resuelto antes de SP06: `zone_type` como `Enum ZoneType`, `max_drones` ignorado en start/end, errores de
 archivo como `MapValidationError`, coordenadas negativas, `movement_cost()` /

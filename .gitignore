@@ -10,3 +10,6 @@ __pycache__/
 .DS_Store
 .idea/
 .vscode/
+
+# Paquete de entrega (documentación de defensa, no versionado)
+entrega/

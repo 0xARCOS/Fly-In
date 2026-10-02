@@ -1,8 +1,23 @@
 # Diagramas de flujo del proyecto
 
-Todos los diagramas de lo construido **hasta SP06**, sacados del código real
-(no del plan). Hay uno por subproyecto y tres vistas de cómo se relacionan.
-Lo que aún no existe (SP07–SP11) aparece con línea discontinua y en gris.
+Todos los diagramas del proyecto, **de SP00 a SP11**, sacados del código real
+(no del plan). Hay tres grupos:
+
+1. **Relaciones**: cómo encajan los subproyectos, los datos y los módulos.
+2. **Flujos transversales**: lo que atraviesa varios subproyectos a la vez,
+   como la ejecución completa de `make run`, los canales de salida, las
+   excepciones, los estados de un dron, una replanificación, los observadores
+   y el bucle de la ventana.
+3. **Un apartado por subproyecto**, con el detalle de sus funciones. El de
+   SP10 (visualización) es el más largo, porque es la parte con más piezas:
+   tres vistas, una escena precalculada y el bucle de la ventana.
+
+Las narrativas ([08](./08-narrativa-sp06-sp07.md), [09](./09-narrativa-sp08.md),
+[10](./10-narrativa-sp09.md), [11](./11-narrativa-sp10.md),
+[12](./12-narrativa-sp11.md)) cuentan con palabras lo que estos diagramas
+dibujan. Las preguntas de evaluación sobre la visualización y sus respuestas
+están en [13](./13-defensa-visualizacion.md), y la comprobación norma a norma
+del subject en [14](./14-cumplimiento-subject.md).
 
 **Cómo leerlos**
 
@@ -12,15 +27,30 @@ Lo que aún no existe (SP07–SP11) aparece con línea discontinua y en gris.
 | Rombo | Una decisión (`if`) |
 | Estadio `([ ])` | Inicio o fin: lo que devuelve la función |
 | Hexágono `{{ }}` | Una excepción que se lanza |
-| Línea discontinua `-.->` | Algo que ocurrirá en un subproyecto futuro |
+| Paralelogramo `[/ /]` | Una entrada o salida: fichero, `stdout`, `stderr`, ventana |
+| Línea discontinua `-.->` | Una llamada opcional (p. ej. el observador de la visualización) |
 
 ---
 
 ## Índice
 
+**Relaciones**
 - [Relación 1 — dependencias entre subproyectos](#relación-1--dependencias-entre-subproyectos)
 - [Relación 2 — flujo de datos del programa](#relación-2--flujo-de-datos-del-programa)
 - [Relación 3 — dependencias entre módulos](#relación-3--dependencias-entre-módulos-imports)
+- [Relación 4 — mapa de clases](#relación-4--mapa-de-clases)
+
+**Flujos transversales**
+- [F1 — `make run` de principio a fin](#f1--make-run-de-principio-a-fin)
+- [F2 — Los dos canales de salida](#f2--los-dos-canales-de-salida-stdout-y-stderr)
+- [F3 — Frontera de excepciones y códigos de salida](#f3--frontera-de-excepciones-y-códigos-de-salida)
+- [F4 — La vida de un dron](#f4--la-vida-de-un-dron-máquina-de-estados)
+- [F5 — Una replanificación](#f5--una-replanificación-paso-a-paso)
+- [F6 — Quién observa la simulación en cada vista](#f6--quién-observa-la-simulación-en-cada-vista)
+- [F7 — Un solo hilo: el bucle de la ventana](#f7--un-solo-hilo-el-bucle-de-la-ventana)
+- [F8 — Recursos y su liberación](#f8--recursos-y-su-liberación)
+
+**Subproyectos**
 - [SP00 — Setup y Makefile](#sp00--setup-y-makefile)
 - [SP01 — Modelo de dominio](#sp01--modelo-de-dominio)
 - [SP02 — Parser](#sp02--parser)
@@ -28,34 +58,38 @@ Lo que aún no existe (SP07–SP11) aparece con línea discontinua y en gris.
 - [SP04 — Dijkstra](#sp04--dijkstra)
 - [SP05 — Heurística abstracta](#sp05--heurística-abstracta)
 - [SP06 — Tabla de reservas](#sp06--tabla-de-reservas)
+- [SP07 — WHCA\*](#sp07--whca)
+- [SP08 — Simulador](#sp08--simulador)
+- [SP09 — Formato de salida](#sp09--formato-de-salida)
+- [SP10 — Visualización](#sp10--visualización)
+- [SP11 — Benchmarks y entrega](#sp11--benchmarks-y-entrega)
 
 ---
 
 ## Relación 1 — dependencias entre subproyectos
 
-Una flecha `A → B` significa "B no se puede empezar sin A verde".
+Una flecha `A → B` significa "B no se puede empezar sin A verde". Todos están
+hechos.
 
 ```mermaid
 flowchart TD
     SP00["SP00 · Setup<br/>Makefile, venv, linters"] --> SP01["SP01 · Modelo<br/>Zone, Connection, Graph"]
     SP01 --> SP02["SP02 · Parser<br/>MapParser"]
-    SP02 --> SP03["SP03 · CLI<br/>main.py"]
+    SP02 --> SP03["SP03 · CLI<br/>FlyIn (main.py)"]
     SP02 --> SP04["SP04 · Dijkstra<br/>ruta de 1 dron"]
     SP04 --> SP05["SP05 · AbstractDistance<br/>heurística h"]
     SP01 --> SP06["SP06 · ReservationTable<br/>ocupación en el tiempo"]
-    SP05 -.-> SP07["SP07 · WhcaPathfinder"]
-    SP06 -.-> SP07
-    SP07 -.-> SP08["SP08 · Drone + Simulator"]
-    SP03 -.-> SP08
-    SP08 -.-> SP09["SP09 · OutputFormatter"]
-    SP09 -.-> SP10["SP10 · Visualización"]
-    SP09 -.-> SP11["SP11 · Benchmarks + README"]
-    SP10 -.-> SP11
+    SP05 --> SP07["SP07 · WhcaPathfinder<br/>búsqueda cooperativa"]
+    SP06 --> SP07
+    SP07 --> SP08["SP08 · Drone + Simulator<br/>bucle en dos fases"]
+    SP03 --> SP08
+    SP08 --> SP09["SP09 · OutputFormatter<br/>salida del subject"]
+    SP09 --> SP10["SP10 · Visualización<br/>ventana pygame + log + HUD"]
+    SP09 --> SP11["SP11 · Benchmarks + README"]
+    SP10 --> SP11
 
     classDef done fill:#d5f5d5,stroke:#2e7d32,color:#000
-    classDef todo fill:#eeeeee,stroke:#999,color:#555,stroke-dasharray:4
-    class SP00,SP01,SP02,SP03,SP04,SP05,SP06 done
-    class SP07,SP08,SP09,SP10,SP11 todo
+    class SP00,SP01,SP02,SP03,SP04,SP05,SP06,SP07,SP08,SP09,SP10,SP11 done
 ```
 
 **Lo que hay que ver aquí:**
@@ -69,86 +103,528 @@ flowchart TD
 
 ## Relación 2 — flujo de datos del programa
 
-Qué recorre un mapa desde el archivo hasta la pantalla. Verde: lo que ya pasa
-hoy al ejecutar `make run`. Gris: lo que se añadirá.
+Qué recorre un mapa desde el archivo hasta la pantalla al ejecutar `make run`.
 
 ```mermaid
 flowchart LR
-    F[/"maps/x.txt"/] --> R["read_map_file<br/>SP03"]
+    F[/"maps/x.txt"/] --> R["FlyIn.read_map_file<br/>SP03"]
     R -->|"texto"| P["MapParser.parse<br/>SP02"]
-    P -->|"nb_drones, Graph"| AD["AbstractDistance<br/>SP05<br/>1 vez al arrancar"]
-    AD -->|"¿end alcanzable?"| M["main: resumen<br/>SP03"]
-    M --> OUT[/"stdout"/]
-    AD --> DJ["Dijkstra.distances_from<br/>SP04"]
-
-    P -.->|"Graph"| RT["ReservationTable<br/>SP06"]
-    AD -.->|"h de cada zona"| W["WhcaPathfinder<br/>SP07"]
-    RT -.->|"can_move, zone_has_room"| W
-    W -.->|"reserve_move, reserve_wait"| RT
-    W -.->|"rutas"| S["Simulator<br/>SP08"]
-    S -.->|"clear_from cada W/2"| RT
-    S -.->|"movimientos"| O["OutputFormatter<br/>SP09"]
-    S -.-> V["TerminalRenderer<br/>SP10"]
-    O -.-> OUT
-
-    classDef done fill:#d5f5d5,stroke:#2e7d32,color:#000
-    classDef todo fill:#eeeeee,stroke:#999,color:#555,stroke-dasharray:4
-    class R,P,AD,M,DJ done
-    class RT,W,S,O,V todo
+    P -->|"nb_drones, Graph"| RCH["AbstractDistance.is_reachable<br/>¿se puede llegar?"]
+    RCH -->|"sí"| SIM["Simulator<br/>SP08"]
+    SIM --> AD["AbstractDistance<br/>SP05 · una sola vez"]
+    AD --> DJ["Dijkstra.distances_from<br/>SP04 · desde end_hub hacia atrás"]
+    SIM --> RT["ReservationTable<br/>SP06"]
+    SIM -->|"drones en tierra"| W["WhcaPathfinder.plan<br/>SP07"]
+    AD -->|"h de cada zona"| W
+    RT -->|"can_move, zone_has_room"| W
+    W -->|"hold, release, reserve"| RT
+    W -->|"rutas: listas de Step"| SIM
+    SIM -->|"clear_from cada W/2"| RT
+    SIM -->|"traza: List of List of Move"| O["OutputFormatter<br/>SP09"]
+    SIM -->|"traza"| MT["Metrics<br/>SP11"]
+    SIM -.->|"on_turn"| REC["ReplayRecorder<br/>SP10"]
+    SIM -.->|"on_turn · solo --view hud"| HUD["TerminalRenderer<br/>SP10"]
+    REC -->|"posiciones y líneas"| SES["Session.play<br/>SP10"]
+    MT --> SES
+    SES --> LOG["EventLog"]
+    SES --> SC["Scene<br/>fotogramas precalculados"]
+    SC --> PV["PygameView"]
+    PV --> WIN[/"ventana pygame"/]
+    LOG --> ERR[/"stderr"/]
+    HUD --> ERR
+    O --> OUT[/"stdout<br/>solo líneas de turno"/]
 ```
 
 **Lo que hay que ver aquí:**
 - El parser y la heurística corren **una sola vez**. Lo que se repite en
-  bucle (a partir de SP07/SP08) es el ciclo tabla ⇄ buscador ⇄ simulador.
-- `ReservationTable` (SP06) ya existe y está probada, pero todavía nadie la
-  usa desde `main`: su primer cliente será SP07.
+  bucle es el ciclo tabla ⇄ buscador ⇄ simulador, cada `W/2` turnos.
+- La visualización cuelga del simulador por líneas discontinuas: son
+  observadores opcionales y el simulador no sabe nada de ellos.
+- Con las vistas `window` y `log` **primero se simula entero y después se
+  enseña lo grabado** (`ReplayRecorder` → `Session`). Solo el HUD dibuja
+  mientras simula.
+- `stdout` recibe **solo** lo que produce `OutputFormatter`.
 
 ---
 
 ## Relación 3 — dependencias entre módulos (imports)
 
-Quién importa a quién, verificado con `grep` sobre el código. Las flechas van
-de "el que importa" a "el importado": ninguna vuelve hacia arriba, así que no
-hay dependencias circulares.
+Quién importa a quién, sacado de las líneas `from fly_in…` de cada fichero.
+Las flechas van de "el que importa" a "el importado": ninguna vuelve hacia
+arriba, así que no hay dependencias circulares. (Se omiten casi todas las
+flechas hacia `models/`, que importa casi todo el mundo.)
 
 ```mermaid
 flowchart TD
-    main["main.py<br/>SP03"]
-    parser["parsing/map_parser.py<br/>SP02"]
-    dijkstra["pathfinding/dijkstra.py<br/>SP04"]
-    heur["pathfinding/abstract_distance.py<br/>SP05"]
+    main["main.py · FlyIn"]
+    bench["benchmarks.py<br/>SP11"]
+    fmt["output/formatter.py<br/>SP09"]
+    session["visualization/session.py"]
+    pgv["visualization/pygame_view.py<br/>único que importa pygame"]
+    scene["visualization/scene.py"]
+    elog["visualization/event_log.py"]
+    rec["visualization/recorder.py"]
+    term["visualization/terminal_view.py"]
+    canvas["visualization/canvas.py"]
+    palette["visualization/palette.py"]
+    sim["simulation/simulator.py<br/>SP08"]
+    drone["simulation/drone.py<br/>SP08"]
+    metrics["simulation/metrics.py<br/>SP11"]
+    whca["pathfinding/whca.py<br/>SP07"]
     table["pathfinding/reservation_table.py<br/>SP06"]
-    graph["models/graph.py"]
-    conn["models/connection.py"]
-    zone["models/zone.py"]
-    errors["models/errors.py"]
+    heur["pathfinding/abstract_distance.py<br/>SP05"]
+    dijkstra["pathfinding/dijkstra.py<br/>SP04"]
+    parser["parsing/map_parser.py<br/>SP02"]
+    models["models/<br/>SP01"]
 
-    main --> parser
-    main --> heur
-    main --> errors
-    parser --> graph
-    parser --> zone
-    parser --> errors
+    main --> bench & fmt & session & rec & term & palette & sim & metrics & parser & heur
+    bench --> sim & metrics & whca & heur & parser
+    fmt --> sim
+    session --> elog & rec & scene & palette & sim & metrics
+    session -. "import perezoso,<br/>solo si hay ventana" .-> pgv
+    pgv --> scene & palette & metrics
+    scene --> rec & sim
+    elog --> rec & palette & sim & metrics
+    rec --> sim & drone
+    term --> canvas & palette & sim & drone & metrics
+    canvas --> palette
+    metrics --> sim
+    sim --> drone & whca & table & heur
+    drone --> whca
+    whca --> table & heur
     heur --> dijkstra
-    heur --> graph
-    heur --> zone
-    dijkstra --> graph
-    dijkstra --> zone
-    table --> graph
-    table --> conn
-    table --> zone
-    graph --> conn
-    graph --> zone
-    conn --> zone
+    parser --> models
+    dijkstra --> models
+    table --> models
+
+    classDef leaf fill:#e8f0ff,stroke:#3050a0,color:#000
+    classDef ext fill:#fff3d6,stroke:#b07000,color:#000
+    class palette,scene leaf
+    class pgv ext
 ```
 
 **Lo que hay que ver aquí:**
 - `models/` no importa nada de fuera de `models/`: el dominio no sabe que
-  existen el parser ni el pathfinding. Por eso se puede testear solo.
+  existen el parser ni el pathfinding.
+- `simulation/` no importa `output/` ni `visualization/`: la simulación se
+  puede usar (y testear) sin pantalla. La dependencia va al revés.
 - `reservation_table.py` no importa `dijkstra` ni `abstract_distance`: SP06 es
   independiente de SP04/SP05, igual que en la Relación 1.
+- **pygame solo entra por un sitio** (en naranja): `pygame_view.py`, y
+  `session.py` lo importa dentro de un método, solo cuando va a abrir la
+  ventana. Sin pygame instalado, todo lo demás funciona (y los tests de la
+  escena, en azul con la paleta, no necesitan pantalla).
 
 ---
+
+## Relación 4 — mapa de clases
+
+Todas las clases del paquete y cómo se usan entre ellas. El proyecto no tiene
+funciones sueltas: todo vive en una clase (Cap. V, *"completely
+object-oriented"*); ver [14](./14-cumplimiento-subject.md).
+
+```mermaid
+classDiagram
+    direction LR
+    class FlyIn {
+        +main()$ int
+        +run(args)$ int
+        +read_map_file(path)$ str
+    }
+    class MapParser {
+        +parse(text)$ tuple
+    }
+    class Graph {
+        +zones
+        +connections
+        +neighbors(zone)
+        +connection_between(a, b)
+    }
+    class Zone
+    class Connection
+    class Simulator {
+        +drones
+        +replans
+        +run(observer) trace
+    }
+    class Drone {
+        +state DroneState
+        +path
+        +next_step(turn)
+    }
+    class WhcaPathfinder {
+        +plan(drones, turn)
+        +find_path(drone, turn)
+    }
+    class PlanningOrders {
+        +by_id()$
+        +nearest_first(h)$
+    }
+    class ReservationTable {
+        +can_move(frm, to, t)
+        +clear_from(t, keep)
+    }
+    class AbstractDistance {
+        +h(zone) int
+    }
+    class Dijkstra
+    class OutputFormatter {
+        +format_trace(trace)$ list
+    }
+    class Metrics
+    class BenchmarkSuite {
+        +target_for(path)$
+        +report()$ int
+    }
+    class SimulationObserver {
+        <<Protocol>>
+        +on_turn(turn, moves, drones)
+    }
+    class ObserverGroup
+    class ReplayRecorder
+    class TerminalRenderer
+    class Session {
+        +choose_view()$ str
+        +play()
+    }
+    class EventLog
+    class Scene
+    class PygameView {
+        +open() bool
+        +play_turn(turn, seconds)
+        +finish(metrics, hold)
+    }
+    class Painter
+    class Palette
+
+    FlyIn ..> MapParser
+    FlyIn ..> Simulator
+    FlyIn ..> Session
+    FlyIn ..> TerminalRenderer
+    FlyIn ..> OutputFormatter
+    FlyIn ..> BenchmarkSuite
+    MapParser ..> Graph : crea
+    Graph *-- Zone
+    Graph *-- Connection
+    Simulator *-- Drone
+    Simulator *-- ReservationTable
+    Simulator *-- WhcaPathfinder
+    Simulator *-- AbstractDistance
+    WhcaPathfinder --> ReservationTable
+    WhcaPathfinder --> AbstractDistance
+    WhcaPathfinder ..> PlanningOrders : order
+    AbstractDistance ..> Dijkstra
+    SimulationObserver <|.. ReplayRecorder
+    SimulationObserver <|.. TerminalRenderer
+    SimulationObserver <|.. ObserverGroup
+    Simulator ..> SimulationObserver : on_turn
+    Metrics ..> Simulator : lee la traza
+    Session *-- EventLog
+    Session ..> Scene : crea
+    Session ..> PygameView : with
+    Session ..> ReplayRecorder : posiciones
+    PygameView --> Scene
+    EventLog --> Painter
+    TerminalRenderer --> Painter
+    Painter ..> Palette
+    PygameView ..> Palette
+```
+
+---
+
+# Flujos transversales
+
+Lo que no pertenece a un solo subproyecto: la ejecución completa y las reglas
+que se cumplen en todas partes a la vez.
+
+## F1 — `make run` de principio a fin
+
+Una partida con la ventana, que es la vista por defecto cuando hay pantalla
+gráfica.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Usuario
+    participant MK as make run
+    participant LD as loading.sh
+    participant FI as FlyIn.main
+    participant SIM as Simulator
+    participant SES as Session
+    participant PV as PygameView
+    U->>MK: make run MAP=... ARGS=...
+    MK->>LD: launch MAP
+    LD-->>U: barra LOADING y PRESS START (stderr)
+    MK->>FI: python -m fly_in.main MAP ARGS
+    FI->>FI: read_map_file, MapParser.parse, ¿end_hub alcanzable?
+    FI->>FI: choose_view, make_painter, target_for
+    FI->>SIM: run(ReplayRecorder)
+    SIM-->>FI: traza entera + replans (milisegundos)
+    FI->>SES: Session(view, Run, ...).play()
+    alt vista window
+        SES->>SES: PYGAME_HIDE_SUPPORT_PROMPT e import de pygame_view
+        SES->>PV: with PygameView(Scene, ...) y open()
+        loop 3, 2, 1, GO
+            SES-->>U: » N en el log (stderr)
+            SES->>PV: countdown(N)
+        end
+        loop cada turno k
+            SES-->>U: bloque T k del log (stderr)
+            SES->>PV: play_turn(k, delay) anima de k-1 a k
+        end
+        SES-->>U: MISSION COMPLETE con métricas (stderr)
+        SES->>PV: finish: tarjeta final hasta una tecla
+        SES->>PV: fin del with: pygame.quit()
+    else vista log (sin pantalla o sin terminal)
+        loop cada turno k
+            SES-->>U: bloque T k del log y sleep(delay)
+        end
+        SES-->>U: MISSION COMPLETE con métricas (stderr)
+    end
+    FI-->>U: líneas D1-zona ... (stdout)
+    FI-->>MK: código de salida 0
+```
+
+**Lo que hay que ver aquí:** la simulación termina **antes** de que se enseñe
+nada (paso 8). Lo que dura es enseñarla, no calcularla. Por eso las métricas
+de tiempo (`compute_ms`) no incluyen la animación. Y todo ocurre en **un solo
+proceso y un solo hilo**: la terminal y la ventana van a la par porque las
+mueve el mismo bucle.
+
+## F2 — Los dos canales de salida: `stdout` y `stderr`
+
+El subject corrige lo que sale por `stdout` (Cap. VII.5). Todo lo demás va por
+`stderr` o a la ventana, así que `make run > salida.txt` deja un fichero que
+solo tiene las líneas de turno, y `wc -l salida.txt` es el número de turnos.
+
+```mermaid
+flowchart LR
+    subgraph OUTCH["stdout · lo que se corrige"]
+        OF["OutputFormatter.format_trace<br/>D1-roof1 D2-corridorA"]
+    end
+    subgraph ERRCH["stderr · lo que se lee"]
+        LD["loading.sh<br/>pantallas de carga"]
+        EL["EventLog<br/>log de eventos"]
+        TR["TerminalRenderer<br/>HUD"]
+        MET["--metrics"]
+        ERRM["Error: ...<br/>Interrupted by user."]
+    end
+    OF --> SO[/"stdout"/]
+    LD --> SE[/"stderr"/]
+    EL --> SE
+    TR --> SE
+    MET --> SE
+    ERRM --> SE
+    PV["PygameView"] --> WIN[/"ventana"/]
+    PG["import pygame<br/>'Hello from the pygame community'"] -. "silenciado con<br/>PYGAME_HIDE_SUPPORT_PROMPT" .-> NUL[/"nada"/]
+```
+
+**Lo que hay que ver aquí:** pygame imprime un saludo **por `stdout`** al
+importarse. Sin la variable `PYGAME_HIDE_SUPPORT_PROMPT`, la primera línea de
+la salida sería ese saludo y la corrección fallaría. `Session` la define
+justo antes de importar `pygame_view`, y
+`test_pygame_never_writes_to_stdout` ejecuta el programa sin ella en el
+entorno para comprobarlo.
+
+## F3 — Frontera de excepciones y códigos de salida
+
+`FlyIn.main` es el **único** sitio donde una excepción se convierte en un
+mensaje para el usuario. Por debajo, cada capa traduce los errores de bajo
+nivel a los suyos, con contexto.
+
+```mermaid
+flowchart TD
+    A(["FlyIn.main()"]) --> P["argparse.parse_args"]
+    P -->|"argumento inválido"| X2(["argparse imprime el uso<br/>código 2"])
+    P --> R["FlyIn.run(args)"]
+    R --> E{"¿excepción?"}
+    E -->|"no"| X0(["código 0"])
+    E -->|"MapError<br/>MapParseError, MapValidationError"| X1(["Error: ... en stderr<br/>código 1"])
+    E -->|"SimulationError<br/>no converge, capacidad violada"| X1
+    E -->|"KeyboardInterrupt<br/>Ctrl+C"| X130(["Interrupted by user.<br/>código 130"])
+    E -->|"BrokenPipeError<br/>el lector cerró la tubería"| XB(["stdout y stderr a /dev/null<br/>código 1, sin traceback"])
+```
+
+Dónde se traduce cada error de bajo nivel antes de llegar arriba:
+
+```mermaid
+flowchart LR
+    subgraph LOW["error de bajo nivel"]
+        V["ValueError<br/>en una línea del mapa"]
+        FNF["fichero ausente, carpeta,<br/>PermissionError, UnicodeDecodeError"]
+        RE["ReservationError<br/>la tabla rechaza una reserva"]
+        IE["ImportError<br/>pygame no instalado"]
+        PE["pygame.error / NotImplementedError<br/>sin vídeo, módulo roto"]
+        QE["el usuario cierra la ventana"]
+    end
+    V -->|"MapParser.parse"| MPE["MapParseError<br/>con línea y causa"]
+    FNF -->|"FlyIn.read_map_file"| ME["MapError"]
+    RE -->|"Simulator._replan"| SE["SimulationError"]
+    IE -->|"Session._play_window"| TERM(["sigue solo en la terminal"])
+    PE -->|"PygameView.open → False"| TERM
+    QE -->|"PygameView._tick"| TERM
+```
+
+**Lo que hay que ver aquí:** los tres últimos casos **no son errores del
+programa**. Que no haya pygame, que no haya vídeo o que el usuario cierre la
+ventana no impide calcular ni imprimir la solución, así que se degradan a la
+terminal en vez de abortar.
+
+## F4 — La vida de un dron (máquina de estados)
+
+`DroneState` dice qué hizo el dron en el último turno. Las transiciones las
+aplica `Simulator._apply` en la fase 2.
+
+```mermaid
+stateDiagram-v2
+    [*] --> WAITING : Drone(id, start_hub)
+    WAITING --> WAITING : paso de espera
+    WAITING --> MOVING : paso de coste 1
+    WAITING --> IN_TRANSIT : despega hacia una restricted
+    WAITING --> ARRIVED : paso de coste 1 a end_hub
+    MOVING --> MOVING : paso de coste 1
+    MOVING --> WAITING : paso de espera
+    MOVING --> IN_TRANSIT : despega hacia una restricted
+    MOVING --> ARRIVED : paso de coste 1 a end_hub
+    IN_TRANSIT --> MOVING : aterriza al turno siguiente
+    IN_TRANSIT --> ARRIVED : aterriza en end_hub
+    ARRIVED --> [*]
+```
+
+| Estado | Qué imprime ese turno | Dónde está |
+|---|---|---|
+| `WAITING` | nada (se omite, Cap. VII.5) | en `current_zone` |
+| `MOVING` | `D<id>-<zona>` | en `current_zone`, la nueva |
+| `IN_TRANSIT` | `D<id>-<conexión>` | **en ninguna zona**: en `transit_connection` |
+| `ARRIVED` | `D<id>-<end_hub>` una vez; después nada | entregado, ya no se rastrea |
+
+**Lo que hay que ver aquí:** `IN_TRANSIT` no tiene flecha hacia sí mismo. Es
+la regla *"It can't wait extra turns on the connection"* (Cap. VII.3) escrita
+como máquina de estados: el aterrizaje no se decide, lo impone
+`Simulator._land`.
+
+## F5 — Una replanificación, paso a paso
+
+Ocurre al empezar cada media ventana (`T % (W // 2) == 0`) y también cuando a
+un dron en tierra se le acaba la ruta.
+
+```mermaid
+sequenceDiagram
+    participant S as Simulator
+    participant T as ReservationTable
+    participant W as WhcaPathfinder
+    participant H as AbstractDistance
+    Note over S: turno T, toca replanificar
+    S->>T: clear_from(T, keep = drones en el aire)
+    S->>W: plan(drones en tierra, T)
+    W->>W: order(drones, T), por id
+    loop cada dron en tierra
+        W->>T: _hold, reserva quedarse de T+1 a T+W
+    end
+    loop cada dron, en ese orden
+        W->>T: release(id, T), suelta su reserva provisional
+        W->>W: find_path, A* sobre estados (zona, turno)
+        W->>H: h(vecino) para ordenar el heap
+        W->>T: can_move y zone_has_room para cada sucesor
+        W->>T: reserve(id, ruta)
+    end
+    W-->>S: rutas por id de dron
+    S->>S: drone.path = ruta y Replan(T, en tierra, en aire, ms)
+```
+
+**Lo que hay que ver aquí:** los drones en el aire no se replanifican (no
+pueden parar ni volver) y sus reservas sobreviven gracias a `keep`. La reserva
+provisional (`_hold`) evita que el primero en planificar ocupe la zona de uno
+que todavía no ha planificado.
+
+## F6 — Quién observa la simulación en cada vista
+
+```mermaid
+flowchart TD
+    V{"vista efectiva<br/>Session.choose_view"} -->|"hud"| G["ObserverGroup(TerminalRenderer, ReplayRecorder)"]
+    V -->|"window, log, none"| RR["ReplayRecorder solo"]
+    G --> RUN1["sim.run dibuja cada turno<br/>mientras simula"]
+    RR --> RUN2["sim.run solo graba<br/>(milisegundos)"]
+    RUN2 --> PLAY{"¿window o log?"}
+    PLAY -->|"sí"| SES["Session.play reproduce lo grabado<br/>a ritmo de --delay"]
+    PLAY -->|"none (-q)"| NOW["nada que enseñar"]
+    RUN1 --> OUT[/"stdout: líneas del subject"/]
+    SES --> OUT
+    NOW --> OUT
+```
+
+**Lo que hay que ver aquí:** el HUD puede dibujar mientras simula porque cada
+turno es un fotograma completo. La ventana anima *entre* turnos, y para
+interpolar necesita saber adónde va cada dron: por eso las vistas `window` y
+`log` graban primero y enseñan después. En los dos casos el simulador
+descuenta el tiempo que pasa dentro del observador, así que `compute_ms` es
+solo cálculo.
+
+## F7 — Un solo hilo: el bucle de la ventana
+
+No hay hilos ni procesos extra: la terminal y la ventana van a la par porque
+las mueve el mismo bucle. Este es el ciclo de un turno con la ventana abierta:
+
+```mermaid
+flowchart TD
+    A(["turno k"]) --> L["EventLog.turn(k)<br/>el bloque del log, en stderr"]
+    L --> PT["PygameView.play_turn(k, delay)"]
+    PT --> T["_tick: clock.tick(60)<br/>espera al siguiente fotograma"]
+    T --> EV{"eventos de pygame"}
+    EV -->|"QUIT o ESC"| CL["_close_window: pygame.quit()<br/>closed = True"]
+    CL --> BACK
+    EV -->|"SPACE"| PA["pausa: el progreso no avanza"]
+    EV -->|"nada"| PR
+    PA --> PR["progreso = tiempo / delay"]
+    PR --> PAINT["_paint(k, progreso)<br/>fondo, conexiones, zonas, drones,<br/>efectos, HUD → display.flip()"]
+    PAINT --> DONE{"¿progreso = 1?"}
+    DONE -->|"no"| T
+    DONE -->|"sí"| BACK(["vuelve a Session:<br/>turno k + 1"])
+```
+
+| Pieza | Para qué |
+|---|---|
+| `pygame.time.Clock.tick(60)` | Limita a 60 fotogramas por segundo y devuelve el tiempo del fotograma anterior (`dt`) |
+| `pygame.event.get()` | Vacía la cola de eventos en cada fotograma. Si no se vacía, el sistema da la ventana por "no responde" |
+| `closed` | Si el usuario cierra la ventana, `play_turn` y `finish` ya no hacen nada y `Session` sigue con la terminal |
+| `pygame.display.flip()` | Enseña de golpe el fotograma dibujado en memoria (doble búfer): no se ve a medio pintar |
+
+**Por qué un solo hilo:** pygame (SDL) exige que la ventana se maneje desde el
+hilo que la creó, y con un solo bucle no puede haber condiciones de carrera
+entre la terminal y la ventana. El ritmo lo marca el propio bucle: dibujar
+un turno dura exactamente `--delay` segundos.
+
+## F8 — Recursos y su liberación
+
+El Cap. III.1 pide gestionar los recursos (ficheros, conexiones) sin fugas, a
+ser posible con *context managers*.
+
+```mermaid
+flowchart TD
+    subgraph WITH["context managers: se liberan pase lo que pase"]
+        PVW["with PygameView(...) as window<br/>__exit__ → close: pygame.quit()"]
+        TRV["with TerminalRenderer(...)<br/>__exit__ → devuelve el cursor"]
+    end
+    subgraph AUTO["abren y cierran dentro de una llamada"]
+        RT["Path.read_text<br/>el fichero de mapa"]
+    end
+    subgraph SH["loading.sh"]
+        TMP["mktemp → log del paso<br/>rm -f al acabar, y trap INT TERM"]
+    end
+    ERR{{"excepción o Ctrl+C<br/>dentro del bloque"}} --> PVW
+    ERR --> TRV
+```
+
+| Recurso | Quién lo abre | Cómo se cierra |
+|---|---|---|
+| Ventana, vídeo y módulos de pygame | `PygameView.open` | `with` → `close()` → `pygame.quit()` (se puede llamar dos veces sin fallar) |
+| Cursor de la terminal oculto | `TerminalRenderer.__enter__` | `__exit__`, también con Ctrl+C |
+| Fichero de mapa | `Path.read_text` | Lo cierra la propia llamada |
+| Log temporal de cada paso del `Makefile` | `loading.sh step` | `rm -f`, y un `trap` que lo borra también con Ctrl+C |
+
+---
+
+# Subproyectos
 
 ## SP00 — Setup y Makefile
 
@@ -156,12 +632,14 @@ Qué hace cada regla del `Makefile`.
 
 ```mermaid
 flowchart TD
+    M["make (sin regla)"] --> MENU["menu: pantalla de título<br/>con todas las reglas"]
     subgraph INSTALL["make install"]
         I1["python3 -m venv .venv"] --> I2["pip install --upgrade pip"] --> I3["pip install -e .[dev]<br/>flake8, mypy, pytest"]
     end
-    subgraph RUN["make run / make debug"]
-        R1["python -m fly_in.main MAP"]
-        R2["python -m pdb -m fly_in.main MAP"]
+    subgraph RUN["make run · hud · debug"]
+        R1["run: python -m fly_in.main MAP ARGS"]
+        R3["hud: ... --view hud"]
+        R2["debug: python -m pdb -m fly_in.main MAP"]
     end
     subgraph LINT["make lint / make lint-strict"]
         L1["flake8 ."] --> L2{"¿strict?"}
@@ -173,12 +651,43 @@ flowchart TD
         C2 -->|"sí"| C3["borra también .venv"]
         C2 -->|"no"| C4(["la venv se conserva"])
     end
-    T["make test → pytest"]
+    T["make test → pytest -q"]
+    B["make bench → python -m fly_in.benchmarks"]
 ```
 
 **Por qué `clean` no borra `.venv`:** el subject dice que `clean` borra
 archivos temporales y cachés. El entorno no es temporal: borrarlo obliga a
 reinstalar. Para eso existe `fclean`.
+
+### `scripts/loading.sh step`: cómo se ve cada paso sin cambiar su resultado
+
+Cada regla envuelve su comando en `loading.sh`. La pantalla de carga es solo
+decoración: el comando real, su código de salida y su `stdout` no cambian.
+
+```mermaid
+flowchart TD
+    A(["loading.sh step N/M Etiqueta -- comando"]) --> F{"¿stderr es terminal,<br/>sin NO_COLOR y TERM ≠ dumb?"}
+    F -->|"no"| P1["escribe '[N/M] Etiqueta ...'"] --> P2["ejecuta el comando<br/>salida a un log temporal"]
+    F -->|"sí"| S1["lanza el comando en segundo plano<br/>salida a un log temporal"]
+    S1 --> S2["mientras siga vivo: spinner,<br/>barra y consejo cada 0,08 s"]
+    S2 --> S3["wait: recoge su código de salida"]
+    P2 --> RC{"¿código ≠ 0?"}
+    S3 --> RC
+    RC -->|"sí"| GO["✘ FAILED + GAME OVER<br/>últimas 40 líneas del log"] --> EX(["exit con el mismo código"])
+    RC -->|"no"| OK["✔ Etiqueta ...... tiempo"] --> MODE{"¿--tail o --show?"}
+    MODE -->|"--tail"| TL["última línea del log<br/>p. ej. 436 passed"]
+    MODE -->|"--show"| SH["el log entero<br/>p. ej. la tabla de make bench"]
+    MODE -->|"ninguno"| END(["borra el log"])
+    TL --> END
+    SH --> END
+    S2 -.->|"Ctrl+C"| TRAP["trap: mata el comando,<br/>devuelve el cursor, borra el log"] --> E130(["exit 130"])
+```
+
+**Por qué el `make run` no pasa por `step`:** `step` guarda la salida en un log
+para enseñarla al final, y `make run` tiene que enseñar su animación en
+directo y dejar `stdout` intacto. Por eso `run` solo muestra la pantalla
+`launch` (una barra de carga en `stderr`) y después ejecuta el programa tal
+cual.
 
 ---
 
@@ -364,15 +873,17 @@ que parece.
 
 ## SP03 — CLI y errores
 
-`main()` es la **frontera de excepciones**: ningún error de mapa sale como
-traceback.
+`FlyIn.main()` es la **frontera de excepciones**: ningún error sale como
+traceback (el detalle de qué se captura y dónde está en
+[F3](#f3--frontera-de-excepciones-y-códigos-de-salida)). `FlyIn.run()` es
+el guion completo del programa:
 
 ```mermaid
 flowchart TD
-    A(["python -m fly_in.main mapa --window W"]) --> B["argparse"]
-    B --> B1{"¿argumentos válidos?<br/>window entero mayor que 0"}
+    A(["python -m fly_in.main mapa [opciones]"]) --> B["FlyIn.build_parser().parse_args()"]
+    B --> B1{"¿argumentos válidos?<br/>window entero > 0, delay >= 0,<br/>view en auto/window/log/hud"}
     B1 -->|"no"| X2(["argparse imprime el uso<br/>código 2"])
-    B1 -->|"sí"| C["read_map_file"]
+    B1 -->|"sí"| C["FlyIn.read_map_file"]
     C --> C1{"¿existe? ¿no es carpeta?<br/>¿permiso? ¿UTF-8?"}
     C1 -->|"no"| ERR
     C1 -->|"sí"| D["MapParser.parse"]
@@ -380,15 +891,29 @@ flowchart TD
     D -->|"ok"| E["AbstractDistance(graph)"]
     E --> F{"¿start_hub puede<br/>llegar a end_hub?"}
     F -->|"no"| E1["lanza MapValidationError<br/>unreachable"] --> ERR
-    F -->|"sí"| G["imprime el resumen<br/>provisional hasta SP08"]
-    G --> OK(["código 0"])
-    ERR["captura MapError:<br/>'Error: …' por stderr"] --> X1(["código 1"])
-    A -.->|"Ctrl+C"| KI(["'Interrupted by user.'<br/>código 130"])
-    G -.->|"SP08"| SIM["Simulator.run"]
-
-    classDef todo fill:#eeeeee,stroke:#999,color:#555,stroke-dasharray:4
-    class SIM todo
+    F -->|"sí"| V["vista = Session.choose_view<br/>delay = --delay o el de la vista<br/>color = make_painter<br/>PAR = BenchmarkSuite.target_for"]
+    V --> H{"¿vista hud?"}
+    H -->|"sí"| HUD["with TerminalRenderer:<br/>sim.run(ObserverGroup(HUD, grabador))"]
+    H -->|"no"| REC["sim.run(ReplayRecorder)"]
+    HUD --> MET["Metrics.from_trace"]
+    REC --> MET
+    MET --> SH{"¿vista window o log?"}
+    SH -->|"sí"| PLAY["Session(...).play()"]
+    SH -->|"no"| OUT
+    PLAY --> OUT["print de cada línea de<br/>OutputFormatter.format_trace → stdout"]
+    OUT --> M{"¿--metrics?"}
+    M -->|"sí"| MP["print_metrics → stderr"]
+    M -->|"no"| OK(["código 0"])
+    MP --> OK
+    ERR["captura MapError / SimulationError:<br/>'Error: …' por stderr"] --> X1(["código 1"])
+    A -.->|"Ctrl+C en cualquier punto"| KI(["'Interrupted by user.'<br/>código 130"])
 ```
+
+**Por qué `stdout` se escribe después de la animación:** si las líneas de
+turno salieran mientras la animación va por el turno 3, el log de la terminal
+y la solución se mezclarían en pantalla. Primero se enseña y al final se
+imprime la solución de golpe. Con `make run > out.txt` el orden da igual: son
+canales distintos.
 
 **Por qué comprobar la alcanzabilidad aquí y no en SP08:** sin esta
 comprobación, un mapa sin ruta posible haría que el simulador diera vueltas
@@ -607,18 +1132,605 @@ sequenceDiagram
 Sin `keep`, `clear_from(5)` borraría la llegada de D1. D2 podría ocupar `r` en
 el 6, y D1 no tendría dónde aterrizar ni podría esperar en el aire.
 
-### Cómo usarán SP07 y SP08 la tabla (futuro)
+### Cómo la usan SP07 y SP08
 
 ```mermaid
 flowchart TD
-    S0["Simulator, cada W/2 turnos"] -.-> S1["clear_from(T, keep = drones en el aire)"]
-    S1 -.-> S2["para cada dron, en orden de prioridad"]
-    S2 -.-> W1["WhcaPathfinder.find_path"]
-    W1 -.->|"expande vecinos"| Q1["can_move(zona, vecino, t)"]
-    W1 -.->|"expande 'esperar'"| Q2["zone_has_room(zona, t+1)"]
-    W1 -.->|"ruta elegida"| R1["reserve_move / reserve_wait<br/>con el id del dron"]
-    R1 -.-> S2
-
-    classDef todo fill:#eeeeee,stroke:#999,color:#555,stroke-dasharray:4
-    class S0,S1,S2,W1,Q1,Q2,R1 todo
+    S0["Simulator, cada W/2 turnos<br/>o si a un dron se le acaba la ruta"] --> S1["clear_from(T, keep = drones en el aire)"]
+    S1 --> H0["WhcaPathfinder.plan: _hold de todos<br/>reserve_wait de T+1 a T+W"]
+    H0 --> S2["para cada dron, en orden de prioridad"]
+    S2 --> RL["release(id, T)"]
+    RL --> W1["WhcaPathfinder.find_path"]
+    W1 -->|"expande vecinos"| Q1["can_move(zona, vecino, t)"]
+    W1 -->|"expande 'esperar'"| Q2["zone_has_room(zona, t+1)"]
+    W1 -->|"ruta elegida"| R1["reserve: reserve_move / reserve_wait<br/>con el id del dron"]
+    R1 --> S2
 ```
+
+El detalle de la conversación entre las tres piezas está en
+[F5](#f5--una-replanificación-paso-a-paso).
+
+---
+
+## SP07 — WHCA\*
+
+`WhcaPathfinder.plan(drones, turno)`: reserva provisional de todos, y después,
+dron a dron, buscar y grabar. `find_path` es A\* sobre estados `(zona, turno)`.
+
+```mermaid
+flowchart TD
+    A["plan(drones, T)"] --> B["order(drones, T)<br/>by_id por defecto"]
+    B --> C["_hold: cada dron reserva<br/>quedarse en su zona T+1…T+W"]
+    C --> D{"¿quedan drones?"}
+    D -->|no| Z["devolver rutas"]
+    D -->|sí| E["table.release(id, T)<br/>quita su reserva provisional"]
+    E --> F["find_path(dron, T)"]
+    F --> G["reserve(id, origen, ruta)"]
+    G --> D
+
+    F --> H["heap ← (zona actual, T)"]
+    H --> I{"heap vacío?"}
+    I -->|sí| J{"¿algún nodo<br/>tocó el borde?"}
+    J -->|sí| K["ruta parcial hasta el<br/>mejor nodo del borde"]
+    J -->|no| L["[esperar 1 turno]"]
+    I -->|no| M["pop menor (f, prioridad, g, turn, tie)"]
+    M --> N{"¿end_hub?"}
+    N -->|sí| O["ruta completa"]
+    N -->|no| P{"turn − T ≥ W?"}
+    P -->|sí| Q["candidato a mejor"] --> I
+    P -->|no| R{"¿(zona, turno)<br/>cerrado?"}
+    R -->|sí| I
+    R -->|no| S["vecinos con can_move<br/>+ esperar si zone_has_room"]
+    S --> I
+```
+
+### Los criterios de orden (`PlanningOrders`)
+
+`order` decide quién planifica primero, y por tanto quién elige antes en la
+tabla. Son intercambiables: se pasan al constructor como `order=`.
+
+```mermaid
+flowchart LR
+    O{"PlanningOrders"} --> I1["by_id<br/>id ascendente · por defecto"]
+    O --> I2["nearest_first(h)<br/>menor h primero"]
+    O --> I3["farthest_first(h)<br/>mayor h primero"]
+    O --> I4["rotating<br/>por id, empezando en T mod n"]
+    I1 --> R1(["140 turnos en los 10 mapas"])
+    I2 --> R1
+    I3 --> R3(["266 turnos: el de detrás ve<br/>al de delante 'quieto'"])
+    I4 --> R4(["177 turnos: rompe la fila india"])
+```
+
+Las cifras son el total de turnos en los diez mapas oficiales con `W = 8`
+(`make bench`).
+
+---
+
+## SP08 — Simulador
+
+Un turno de `Simulator.run`.
+
+```mermaid
+flowchart TD
+    A["turno T"] --> B{"¿quedan<br/>activos?"}
+    B -->|no| Z["devolver traza"]
+    B -->|sí| C{"T ≥ max_turns?"}
+    C -->|sí| X{{"SimulationError<br/>nombra a los atascados"}}
+    C -->|no| D{"T % (W//2) == 0<br/>o ruta agotada?"}
+    D -->|sí| E["clear_from(T, keep=en el aire)<br/>plan(drones en tierra, T)"]
+    D -->|no| F
+    E --> F["FASE 1 · decidir<br/>en el aire: aterrizar<br/>en tierra: next_step(T)"]
+    F --> G["FASE 2 · aplicar a la vez<br/>WAITING · MOVING · IN_TRANSIT · ARRIVED"]
+    G --> H["_verify: recontar zonas<br/>y conexiones sin la tabla"]
+    H -->|violación| Y{{"SimulationError"}}
+    H --> I["traza += Move del turno"]
+    I -.-> J["observer.on_turn"]
+    I --> A
+```
+
+### Fase 1 y fase 2 por dentro
+
+```mermaid
+flowchart TD
+    subgraph F1["FASE 1 · _decide: nadie se mueve todavía"]
+        D0["para cada dron activo"] --> D1{"¿in_transit?"}
+        D1 -->|"sí"| D2["_land: aterriza en path[0]<br/>Move(arrives=True)<br/>sin elección posible"]
+        D1 -->|"no"| D3["step = next_step(T)"]
+        D3 -->|"None"| DX{{"SimulationError<br/>sin plan"}}
+        D3 --> D4{"¿step.connection?"}
+        D4 -->|"None"| D5["esperar: sin Move"]
+        D4 -->|"sí"| D6["Move(arrives = coste 1)"]
+    end
+    subgraph F2["FASE 2 · _apply: todos a la vez"]
+        A1{"¿Move?"} -->|"no"| A2["path.pop · WAITING"]
+        A1 -->|"arrives=False"| A3["IN_TRANSIT<br/>transit_connection = conexión"]
+        A1 -->|"arrives=True"| A4["path.pop · current_zone = destino"]
+        A4 --> A5{"¿destino es end_hub?"}
+        A5 -->|"sí"| A6["ARRIVED"]
+        A5 -->|"no"| A7["MOVING"]
+    end
+    F1 --> F2
+    F2 --> V["_verify: cuenta drones por zona<br/>y Move por conexión"]
+```
+
+**Por qué dos fases:** si cada dron se moviera en cuanto decide, el resultado
+dependería del orden de la lista: D1 podría ver una zona libre porque D2 ya
+se había ido *en este mismo turno*, y otras veces no. Con dos fases todos
+deciden contra la misma foto (Cap. VII.3: *"Drones moving out of a zone free
+up capacity for that same turn"* ya lo modela la tabla de reservas). Hay un
+test que invierte la lista de drones y exige la misma salida en todos los
+mapas.
+
+---
+
+## SP09 — Formato de salida
+
+```mermaid
+flowchart LR
+    T["traza: List[List[Move]]"] --> A["por turno"]
+    A --> B{"¿sin movimientos?"}
+    B -->|sí| C["sin línea"]
+    B -->|no| D["ordenar por id"]
+    D --> E{"move.arrives?"}
+    E -->|sí| F["D‹id›-‹zona›"]
+    E -->|no| G["D‹id›-‹conexión›"]
+    F --> H["unir con un espacio"]
+    G --> H
+    H --> OUT[/"stdout"/]
+```
+
+---
+
+## SP10 — Visualización
+
+La visualización tiene tres vistas: la ventana pygame (con el log en la
+terminal), el log solo y el HUD de terminal. Esta sección sigue el camino de
+los datos, desde qué vista se elige hasta el último píxel de la ventana. La
+defensa en formato pregunta y respuesta está en
+[13-defensa-visualizacion.md](./13-defensa-visualizacion.md).
+
+| Diagrama | Pieza | Fichero |
+|---|---|---|
+| [10.1](#101-qué-vista-se-enseña) | Qué vista se enseña | `session.py` |
+| [10.2](#102-sessionplay-y-sus-salidas-de-emergencia) | `Session.play` y sus salidas de emergencia | `session.py` |
+| [10.3](#103-_play_log-la-terminal-y-la-ventana-a-la-par) | `_play_log`: la terminal y la ventana a la par | `session.py` |
+| [10.4](#104-scene-de-la-grabación-a-los-fotogramas) | `Scene`: de la grabación a los fotogramas | `recorder.py`, `scene.py` |
+| [10.5](#105-la-vida-de-la-ventana) | La vida de la ventana | `pygame_view.py` |
+| [10.6](#106-un-fotograma-de-la-ventana) | Un fotograma de la ventana | `pygame_view.py` |
+| [10.7](#107-dónde-se-dibuja-cada-dron) | Dónde se dibuja cada dron | `pygame_view.py` |
+| [10.8](#108-projection-del-mapa-a-los-píxeles) | `Projection`: del mapa a los píxeles | `pygame_view.py` |
+| [10.9](#109-eventlogturn-un-bloque-del-log) | `EventLog.turn` | `event_log.py` |
+| [10.10](#1010-el-hud-de-terminal) | El HUD de terminal | `terminal_view.py`, `canvas.py` |
+| [10.11](#1011-colores-del-nombre-al-código-ansi) | Colores: del nombre al código ANSI | `palette.py` |
+| [10.12](#1012-clases-de-la-visualización) | Clases de la visualización | todo el paquete |
+
+### 10.1 Qué vista se enseña
+
+`Session.choose_view(requested, quiet, interactive)`, más el ritmo que usa
+`FlyIn.run`:
+
+```mermaid
+flowchart TD
+    A(["choose_view(--view, -q, ¿stderr es terminal?)"]) --> Q{"¿-q / --quiet?"}
+    Q -->|"sí"| NONE(["none: sin visualización"])
+    Q -->|"no"| R{"¿--view distinto de auto?"}
+    R -->|"sí"| EXP(["esa vista: window, log o hud"])
+    R -->|"no"| T{"¿stderr es terminal?"}
+    T -->|"no: tubería, fichero, CI"| LOG(["log"])
+    T -->|"sí"| D{"Session.display_available()<br/>macOS, Windows,<br/>DISPLAY o WAYLAND_DISPLAY"}
+    D -->|"no"| LOG
+    D -->|"sí"| WIN(["window"])
+```
+
+```mermaid
+flowchart LR
+    V["vista"] --> DL{"¿--delay?"}
+    DL -->|"sí"| DV["ese valor"]
+    DL -->|"no"| DD["por vista:<br/>window 0.8 s · log 0.25 s · hud 0.4 s"]
+    DV --> P{"¿terminal o vista window?"}
+    DD --> P
+    P -->|"sí"| PACE["pace = delay"]
+    P -->|"no"| ZERO["pace = 0<br/>nadie está mirando"]
+```
+
+**Lo que hay que ver aquí:** `auto` **nunca** intenta abrir una ventana sin
+terminal. Así `make run > out.txt` sigue animando (stderr es la terminal),
+pero un test, una tubería o una corrección automática no abren nada.
+
+### 10.2 `Session.play` y sus salidas de emergencia
+
+```mermaid
+flowchart TD
+    A(["Session(view, run, paint, stream, pace).play()"]) --> V{"¿view == window?"}
+    V -->|"no"| LOGO["log.briefing('terminal log')"]
+    V -->|"sí"| ENV["PYGAME_HIDE_SUPPORT_PROMPT = 1<br/>(el saludo de pygame iría a stdout)"]
+    ENV --> IMP["from ... import PygameView"]
+    IMP -->|"ImportError"| N1["aviso: pygame is not installed"] --> LOGO
+    IMP -->|"ok"| SC["Scene(grafo, posiciones, líneas, replans)"]
+    SC --> W["with PygameView(scene, ...) as window"]
+    W --> OP{"window.open()"}
+    OP -->|"False: sin vídeo,<br/>módulo roto"| N2["aviso: cannot open a window"] --> LOGO
+    OP -->|"True"| BR["log.briefing('◉ WINDOW ...')"]
+    BR --> CD["por cada 3, 2, 1, GO:<br/>log.countdown y window.countdown"]
+    CD --> PL["_play_log(window)"]
+    PL --> FI["log.finish(métricas)"]
+    FI --> WF{"¿la ventana sigue abierta?"}
+    WF -->|"sí"| CARD["window.finish: tarjeta final<br/>hasta una tecla o 20 s"]
+    WF -->|"no"| EXIT
+    CARD --> EXIT(["fin del with: pygame.quit()"])
+    LOGO --> PL2["_play_log(None)"] --> FI2(["log.finish(métricas)"])
+```
+
+**Por qué la tarjeta final espera una tecla con un límite:** la tarjeta es
+para leerla, así que no desaparece sola al instante. Pero `stdout` se imprime
+cuando termina la sesión, y el programa no puede quedarse esperando para
+siempre a alguien que no está mirando: a los 20 s se cierra sola. Con
+`--delay 0` no espera nada.
+
+### 10.3 `_play_log`: la terminal y la ventana a la par
+
+```mermaid
+flowchart TD
+    A(["_play_log(window)"]) --> G["agrupa las replanificaciones por instante"]
+    G --> LOOP{"¿quedan turnos?"}
+    LOOP -->|"sí, turno k"| LG["log.turn(k, moves, posiciones k,<br/>replans del instante k-1)"]
+    LG --> W{"¿hay ventana abierta?"}
+    W -->|"sí"| PT["window.play_turn(k, pace)<br/>la animación dura pace segundos"] --> LOOP
+    W -->|"no"| CL{"¿se cerró durante la partida?"}
+    CL -->|"sí, la primera vez"| NOTE["aviso: window closed · terminal only"] --> SL
+    CL -->|"no"| SL{"¿pace > 0?"}
+    SL -->|"sí"| SLEEP["sleep(pace)"] --> LOOP
+    SL -->|"no"| LOOP
+    LOOP -->|"no"| Z(["fin"])
+```
+
+**Lo que hay que ver aquí:** el bloque del turno `k` se escribe **justo
+antes** de animarlo, y la animación dura lo mismo que el `sleep` que habría
+sin ventana. Así la terminal y la ventana enseñan el mismo turno a la vez, y
+el ritmo es idéntico con ventana o sin ella.
+
+### 10.4 `Scene`: de la grabación a los fotogramas
+
+`ReplayRecorder.on_turn` guarda la posición de cada dron tras cada turno, y
+`Scene` la convierte, una sola vez, en lo que la ventana necesita:
+
+```mermaid
+flowchart LR
+    subgraph REC["ReplayRecorder._positions(drones)"]
+        D{"dron"} -->|"no activo"| PD["['d']<br/>entregado"]
+        D -->|"en el aire"| PA["['a', origen, destino]"]
+        D -->|"en tierra"| PZ["['z', zona]"]
+    end
+    REC --> POS["positions[k]: un dict por fotograma<br/>positions[0] = todos en start<br/>lines[k]: la línea de stdout"]
+    POS --> SC["Scene"]
+    SC --> SP["spots[k][dron]: Spot<br/>punto del mapa, en el aire,<br/>entregado, hueco en el anillo"]
+    SC --> OC["occupants[k]: drones por zona"]
+    SC --> US["used[k]: conexiones usadas<br/>de k-1 a k, y en qué sentido"]
+    SC --> DL["delivered[k], airborne[k]"]
+    SC --> RP["replan_turns: turnos que<br/>empiezan con una replanificación"]
+```
+
+**Por qué precalcular:** la ventana dibuja 60 veces por segundo. Todo lo que
+depende solo de la simulación (dónde está cada dron, qué conexiones se usan,
+cuántos se han entregado) se calcula una vez al empezar, y el bucle de dibujo
+solo consulta listas. Además, `scene.py` no importa pygame: se prueba sin
+pantalla (`test_scene_*`).
+
+### 10.5 La vida de la ventana
+
+```mermaid
+stateDiagram-v2
+    [*] --> CREADA : PygameView(scene, ...)
+    CREADA --> ABIERTA : open() = True
+    CREADA --> CERRADA : open() = False
+    ABIERTA --> CUENTA_ATRAS : countdown(3, 2, 1, GO)
+    CUENTA_ATRAS --> ANIMANDO : play_turn(1, delay)
+    ANIMANDO --> ANIMANDO : play_turn(k, delay)
+    ANIMANDO --> PAUSA : SPACE
+    PAUSA --> ANIMANDO : SPACE
+    ANIMANDO --> TARJETA : finish(métricas, 20 s)
+    TARJETA --> CERRADA : tecla, 20 s o fin del with
+    ABIERTA --> CERRADA : QUIT o ESC
+    CUENTA_ATRAS --> CERRADA : QUIT o ESC
+    ANIMANDO --> CERRADA : QUIT o ESC
+    PAUSA --> CERRADA : QUIT o ESC
+    CERRADA --> [*]
+```
+
+**Lo que hay que ver aquí:** desde cualquier estado se puede cerrar, y cerrar
+es definitivo: `_close_window` llama a `pygame.quit()` en el acto (la ventana
+desaparece ya) y pone `closed = True`. A partir de ahí `play_turn` y `finish`
+no hacen nada, y la terminal sigue sola.
+
+### 10.6 Un fotograma de la ventana
+
+`_paint(turn, progress)` dibuja por capas, de atrás hacia delante: lo que se
+dibuja después tapa a lo anterior.
+
+```mermaid
+flowchart TD
+    A(["_paint(k, progreso)"]) --> E["eased = _ease(progreso)<br/>acelera y frena, curva cúbica"]
+    E --> OC["ocupación que se enseña:<br/>la de k-1 hasta mitad de viaje, luego la de k"]
+    OC --> L1["1 · fondo precalculado<br/>degradado radial y rejilla"]
+    L1 --> L2["2 · estrellas que titilan"]
+    L2 --> L3["3 · conexiones · a trazos hacia restricted<br/>y un flujo de luz en las usadas este turno"]
+    L3 --> L4["4 · zonas: hexágonos con halo,<br/>decoración por tipo y puntos de capacidad"]
+    L4 --> L5["5 · drones con su estela"]
+    L5 --> L6["6 · efectos: chispas, +1, anillo de replan"]
+    L6 --> L7["7 · nombres de las zonas, sin solaparse"]
+    L7 --> L8["8 · HUD: misión, turno, entregados, línea de stdout"]
+    L8 --> L9["9 · tarjeta, si la hay: briefing o final"]
+    L9 --> F(["pygame.display.flip()"])
+```
+
+Qué dice cada elemento (la respuesta a *"how does your visual representation
+enhance understanding"*):
+
+| Elemento | Qué regla hace visible |
+|---|---|
+| Puntos de capacidad sobre cada zona; zona en rojo que late al llenarse | `max_drones` (VII.2): por qué un dron espera |
+| Dron elevado con sombra sobre la conexión durante dos turnos | Coste 2 de `restricted` y *"MUST reach its destination during the next turn"* (VII.3) |
+| Flujo de luz sobre la conexión en el sentido del viaje | Qué conexión ocupa cada dron (`max_link_capacity`) |
+| Anillo ámbar giratorio, estrella dorada, cruz roja | Tipos `restricted`, `priority` y `blocked` (VI) |
+| Línea de `stdout` en la barra inferior | La salida exacta del subject (VII.5), turno a turno |
+| Anillo rosa "WHCA\* REPLAN" | Cuándo recalcula el algoritmo ("are you recalculating or caching paths?", VII.1) |
+| Anillo de entregados, AIRBORNE, ON GROUND; tarjeta final | Progreso y métricas secundarias (VII.6, VII.7) |
+
+### 10.7 Dónde se dibuja cada dron
+
+```mermaid
+flowchart TD
+    A(["dron d, fotogramas k-1 y k"]) --> B{"¿entregado en los dos?"}
+    B -->|"sí"| NO(["no se dibuja; se borra su estela"])
+    B -->|"no"| P["_spot_pixel en k-1 y en k"]
+    P --> S{"¿solo en una zona normal?"}
+    S -->|"sí"| C["el centro de la zona"]
+    S -->|"no: hub o varios drones"| R["su hueco en un anillo alrededor<br/>12 por anillo, anillos concéntricos"]
+    C --> I
+    R --> I["posición = interpolación de los dos píxeles<br/>con eased"]
+    I --> AIR["en el aire: eleva el dibujo y<br/>pone una sombra en el suelo"]
+    AIR --> DL{"¿se entrega en k?"}
+    DL -->|"sí"| SH["a partir del 60 % del viaje se encoge<br/>dentro del objetivo; salen chispas y +1"]
+    DL -->|"no"| DR
+    SH --> DR["_draw_drone: halo, cuatro brazos,<br/>hélices que giran, cuerpo y número"]
+```
+
+### 10.8 `Projection`: del mapa a los píxeles
+
+```mermaid
+flowchart LR
+    M["coordenadas del fichero<br/>x a la derecha, y hacia arriba"] --> SP["span_x, span_y<br/>(0 si todos en fila)"]
+    SP --> FIT["fit_x = ancho útil / span_x<br/>fit_y = alto útil / span_y<br/>(sin los márgenes del HUD)"]
+    FIT --> SC["escala por eje: la que cabe,<br/>como mucho 2.5 veces la del otro eje<br/>y como mucho 170 px por unidad"]
+    SC --> CEN["centra el mapa en el área útil"]
+    CEN --> PT["point(x, y) =<br/>origen + (x - min_x) · escala_x,<br/>origen + (max_y - y) · escala_y"]
+    SC --> RAD["radio de zona = 0.3 × separación,<br/>entre 9 y 24 px"]
+```
+
+**Por qué dos escalas:** los mapas oficiales son mucho más anchos que altos
+(el challenger mide 23 × 4 unidades). Con una sola escala quedaría una tira
+fina en mitad de la ventana. Dejar que el eje corto se estire (hasta 2,5
+veces) aprovecha la pantalla sin deformar el mapa hasta hacerlo
+irreconocible.
+
+### 10.9 `EventLog.turn`: un bloque del log
+
+```mermaid
+flowchart TD
+    A(["turn(k, moves, positions, replans)"]) --> H["cabecera ── Tk ─── ▸ línea de stdout<br/>recortada con … si no cabe"]
+    H --> R{"¿replan en el instante k-1?"}
+    R -->|"sí"| RP["⟳ replan · N drones planned ·<br/>M kept in flight · ms"]
+    R -->|"no"| MV
+    RP --> MV["cada Move, ordenado por id"]
+    MV --> K{"tipo de movimiento"}
+    K -->|"llega a end_hub"| K1["★ DELIVERED + barra n/total"]
+    K -->|"arrives=False"| K2["◆ takes off → zona via conexión<br/>(2 turns in the air)"]
+    K -->|"llega a restricted"| K3["◆ lands on zona"]
+    K -->|"otro"| K4["→ zona (priority)"]
+    K1 --> HO
+    K2 --> HO
+    K3 --> HO
+    K4 --> HO["holding at zona: D.. agrupados<br/>más de 12 → '… +N'"]
+    HO --> CA{"¿alguna zona se ha llenado<br/>en este turno?"}
+    CA -->|"sí"| AL["⚠ zona is FULL (cap/cap)<br/>solo al llenarse, no cada turno"]
+    CA -->|"no"| Z(["fin"])
+    AL --> Z
+```
+
+### 10.10 El HUD de terminal
+
+`--view hud` (o `make hud`). Es un observador en vivo: dibuja mientras el
+simulador avanza.
+
+```mermaid
+flowchart TD
+    W["with TerminalRenderer(...)"] --> EN["__enter__: oculta el cursor<br/>(solo en vivo y con color)"]
+    EN --> IN["intro: logo, mapa, INFO, PAR<br/>o una línea en modo registro"]
+    IN --> OT["on_turn(k): guarda eventos"]
+    OT --> LV{"¿en vivo?"}
+    LV -->|"no: tubería"| OT
+    LV -->|"sí"| FR["_frame: cabecera · mapa · progreso · paneles"]
+    FR --> SH["_show: borra pantalla y pinta"] --> SL["sleep(delay)"] --> OT
+    OT --> FI["finish: último fotograma + MISSION COMPLETE"]
+    FI --> EX["__exit__: devuelve el cursor<br/>también con error o Ctrl+C"]
+```
+
+Cómo se dibuja el mapa con caracteres (`MapLayout` + `Canvas`):
+
+```mermaid
+flowchart LR
+    C["coordenadas del mapa<br/>x a la derecha, y hacia arriba"] --> L["MapLayout: escala x al ancho,<br/>invierte y (filas hacia abajo)"]
+    L --> LN["1 · conexiones con Bresenham<br/>─ │ ╱ ╲ · color del dron que la usa"]
+    LN --> AIR["2 · drones en el aire ◆<br/>en el punto medio de su conexión"]
+    AIR --> Z["3 · zonas: corchetes por tipo<br/>( ) normal · #lt; #gt; priority · [ ] restricted<br/>▓▓▓ blocked · { } hubs · rojo si llena"]
+    Z --> LB["4 · etiquetas: primero los hubs,<br/>solo si caben sin pisar nada"]
+    LB --> R["Canvas.render: un código ANSI<br/>por tramo de mismo estilo"]
+```
+
+**Por qué corchetes distintos por tipo:** con `--no-color` (o `NO_COLOR`) el
+tipo de cada zona se sigue leyendo. El color es un refuerzo, no la única pista.
+
+### 10.11 Colores: del nombre al código ANSI
+
+```mermaid
+flowchart TD
+    A(["Palette.resolve(color, frame)"]) --> N{"¿None?"}
+    N -->|"sí"| NONE(["None → color por tipo de zona"])
+    N -->|"no"| K["minúsculas y sin espacios"]
+    K --> T{"¿en la tabla NAMED?"}
+    T -->|"sí"| RGB1(["ese RGB"])
+    T -->|"no"| RB{"¿rainbow?"}
+    RB -->|"sí"| RGB2(["hue(frame × 0.07)<br/>cambia cada fotograma"])
+    RB -->|"no"| HX{"¿#rrggbb?"}
+    HX -->|"sí"| RGB3(["ese RGB"])
+    HX -->|"no"| HS(["hue(sha256(nombre)[0] / 256)<br/>estable entre ejecuciones"])
+```
+
+```mermaid
+flowchart TD
+    P(["Painter(texto, fg, bg, bold)"]) --> E{"¿color activado?<br/>terminal, sin --no-color, sin NO_COLOR"}
+    E -->|"no"| PLAIN(["el texto tal cual"])
+    E -->|"sí"| TC{"¿COLORTERM truecolor/24bit?"}
+    TC -->|"sí"| C24["ESC[38;2;r;g;bm"]
+    TC -->|"no"| C16["el más cercano de los 16<br/>colores estándar"]
+    C24 --> RS(["texto + ESC[0m siempre"])
+    C16 --> RS
+```
+
+**Lo que hay que ver aquí:** el subject dice que cualquier palabra es un color
+válido (Cap. VI, *"no fixed list"*). Ninguna rama lanza una excepción: un
+metadato decorativo nunca tumba el programa.
+
+La ventana usa la misma `Palette.resolve` para el `color=` de cada zona, y
+además `PygameView._visible` aclara los colores muy oscuros (`black`,
+`maroon`) para que no desaparezcan sobre el fondo.
+
+### 10.12 Clases de la visualización
+
+```mermaid
+classDiagram
+    direction TB
+    class Session {
+        +view
+        +run Run
+        +choose_view(requested, quiet, interactive)$ str
+        +display_available()$ bool
+        +play()
+        -_play_window() bool
+        -_play_log(window)
+    }
+    class AnimatedView {
+        <<Protocol>>
+        +closed bool
+        +play_turn(turn, seconds)
+    }
+    class Run {
+        <<dataclass frozen>>
+        graph, nb_drones, trace, recorder
+        metrics, replans, title, window, target
+    }
+    class EventLog {
+        +briefing(view)
+        +countdown(value)
+        +turn(k, moves, positions, replans)
+        +finish(metrics, replans)
+        +plural(n, word)$ str
+    }
+    class ReplayRecorder {
+        +positions
+        +lines
+        +on_turn(turn, moves, drones)
+    }
+    class Scene {
+        +spots
+        +occupants
+        +used
+        +delivered
+        +replan_turns
+        +newly_delivered(k) list
+    }
+    class Spot {
+        <<dataclass frozen>>
+        anchor, zone, airborne
+        delivered, slot, crowd
+    }
+    class PygameView {
+        +closed bool
+        +open() bool
+        +countdown(value, seconds)
+        +play_turn(turn, seconds)
+        +finish(metrics, hold)
+        +close()
+        +#95;#95;enter#95;#95;()
+        +#95;#95;exit#95;#95;()
+    }
+    class Projection {
+        +radius
+        +point(map_point) pixel
+    }
+    class Glow {
+        +draw(screen, color, center, radius)
+    }
+    class Fonts {
+        +render(font, text, color) Surface
+    }
+    class Particle {
+        <<dataclass>>
+        x, y, vx, vy, color, life
+    }
+    class TerminalRenderer {
+        +intro()
+        +on_turn(turn, moves, drones)
+        +finish(metrics)
+        +#95;#95;enter#95;#95;()
+        +#95;#95;exit#95;#95;()
+    }
+    class MapLayout
+    class Canvas
+    class Painter
+    class Palette {
+        +resolve(name, frame)$ RGB
+        +drone_color(id)$ RGB
+    }
+    Session *-- EventLog
+    Session o-- Run
+    Session ..> Scene : crea
+    Session ..> PygameView : with
+    AnimatedView <|.. PygameView
+    Run o-- ReplayRecorder
+    Scene *-- Spot
+    Scene ..> ReplayRecorder : lee
+    PygameView --> Scene
+    PygameView *-- Projection
+    PygameView *-- Glow
+    PygameView *-- Fonts
+    PygameView *-- Particle
+    PygameView ..> Palette
+    EventLog --> Painter
+    EventLog ..> Palette
+    TerminalRenderer *-- MapLayout
+    TerminalRenderer ..> Canvas
+    TerminalRenderer --> Painter
+    Painter ..> Palette
+```
+
+---
+
+## SP11 — Benchmarks y entrega
+
+```mermaid
+flowchart LR
+    M[/"maps/oficial_maps/*"/] --> B["make bench<br/>BenchmarkSuite.report()"]
+    B --> T1["tabla oficial<br/>turnos · objetivo · tiempo · métricas"]
+    B --> T2["12 configuraciones<br/>W ∈ {4, 8, 16} × 4 órdenes"]
+    T2 --> D["decisión: W = 8, orden por id"]
+    T1 --> R["README.md<br/>(inglés, 1.ª línea literal)"]
+    D --> R
+    R --> C["copia limpia:<br/>install · test · lint-strict"]
+    B --> EX{"¿algún mapa<br/>por encima del objetivo?"}
+    EX -->|"sí"| E1(["código 1"])
+    EX -->|"no"| E0(["código 0"])
+```
+
+`BenchmarkSuite.target_for(ruta)` reconoce un mapa oficial por su nombre de
+fichero y da su objetivo: es el **PAR** que enseñan las tres vistas.

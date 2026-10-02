@@ -1,4 +1,4 @@
-# SP08 — `Drone` y `Simulator`: el bucle turno a turno ⬜
+# SP08 — `Drone` y `Simulator`: el bucle turno a turno ✅
 
 **Objetivo:** ejecutar la simulación: avanzar turno a turno, mover los drones,
 replanificar cada `W/2` turnos, y terminar cuando todos han llegado.
@@ -77,12 +77,12 @@ función run():
 
     mientras queden drones sin entregar:
 
-        # (a) replanificar al inicio de cada media ventana
-        si turno % (W // 2) == 0:
+        # (a) replanificar al inicio de cada media ventana,
+        #     o antes si a algún dron en tierra se le agotó la ruta
+        si turno % (W // 2) == 0 o algún dron en tierra no tiene ruta:
             tabla.clear_from(turno, keep=ids_en_transito)
-            para cada dron en orden_de_prioridad(drones_activos):
-                dron.path ← pathfinder.find_path(dron, turno)
-                grabar dron.path en la tabla
+            rutas ← pathfinder.plan(drones_activos, turno)   # ordena, busca y graba
+            para cada dron activo: dron.path ← rutas[dron.id]
 
         # (b) FASE 1 — DECIDIR (nadie se mueve todavía)
         movimientos ← []
@@ -152,10 +152,18 @@ aquí vale su peso en oro.
 ```python
 if turn % (self.window // 2) == 0:
     self.table.clear_from(turn, keep=in_transit_ids)
-    for drone in self._planning_order(active_drones):
-        drone.path = self.pathfinder.find_path(drone, turn)
-        self._record(drone.path)
+    paths = self.pathfinder.plan(active_drones, turn)
+    for drone in active_drones:
+        drone.path = paths[drone.id]
 ```
+
+⚠️ **No lo des por sentado — llama a `plan`, no a `find_path` en un bucle**
+`plan()` ([SP07](./SP07-whca.md#resuelto-en-plan-la-reserva-provisional))
+hace más que ordenar y grabar: antes de planificar a nadie reserva la posición
+actual de todos los drones durante la ventana. Si recorres los drones llamando
+a `find_path` tú mismo, un dron que planifica antes puede reservar entrar en la
+zona de otro que aún no ha planificado y dejarlo sin salida legal. El criterio
+de orden se elige al construir el `WhcaPathfinder` (`order=`).
 
 **Por qué `W // 2` y no `W`:** si replanificas justo cuando la ventana se agota,
 los drones llegan al límite sin margen de reacción. Replanificando a mitad de
@@ -216,16 +224,16 @@ Cuesta dos líneas y convierte un cuelgue confuso en un error comprensible.
 
 ## Tests de cierre (`test/test_simulator.py`)
 
-- [ ] `single_drone.txt`: 1 dron, 1 turno, llega
-- [ ] `linear.txt`: los 2 drones llegan; el número de turnos coincide con el cálculo a mano
-- [ ] `bottleneck.txt`: los 3 drones llegan sin violar `max_drones=1` en `narrow`
-- [ ] **Independencia del orden:** ejecuta el mismo mapa con `drones` en orden
+- [x] `single_drone.txt`: 1 dron, 1 turno, llega
+- [x] `linear.txt`: los 2 drones llegan; el número de turnos coincide con el cálculo a mano
+- [x] `bottleneck.txt`: los 3 drones llegan sin violar `max_drones=1` en `narrow`
+- [x] **Independencia del orden:** ejecuta el mismo mapa con `drones` en orden
       normal y en orden invertido → **mismo número de turnos**. *(El test que
       verifica que las dos fases están bien.)*
-- [ ] Todos los drones acaban en `ARRIVED`
-- [ ] Ningún dron `IN_TRANSIT` permanece más de un turno en la conexión
-- [ ] Mapa sin ruta posible → `SimulationError` en el turno 0, no un cuelgue
-- [ ] **Validador de invariantes** ([`05-plan-de-pruebas.md`](../05-plan-de-pruebas.md#4-verificación-de-invariantes--el-test-que-más-bugs-caza))
+- [x] Todos los drones acaban en `ARRIVED`
+- [x] Ningún dron `IN_TRANSIT` permanece más de un turno en la conexión
+- [x] Mapa sin ruta posible → `SimulationError` en el turno 0, no un cuelgue
+- [x] **Validador de invariantes** ([`05-plan-de-pruebas.md`](../05-plan-de-pruebas.md#4-verificación-de-invariantes--el-test-que-más-bugs-caza))
       aplicado a la traza completa de **todos** los mapas
 
 El último es el de mayor retorno de todo el proyecto: un validador independiente
@@ -236,10 +244,10 @@ de SP06, SP07, SP08 y SP09 de una sola vez.
 
 ## Criterio de salida
 
-- [ ] Los 8 tests pasan
-- [ ] El validador de invariantes pasa en todos los mapas de `maps/valid/`
-- [ ] El límite de seguridad existe y su mensaje nombra los drones atascados
-- [ ] `make lint-strict` pasa
+- [x] Los 8 tests pasan
+- [x] El validador de invariantes pasa en todos los mapas de `maps/valid/`
+- [x] El límite de seguridad existe y su mensaje nombra los drones atascados
+- [x] `make lint-strict` pasa
 
 ## Decisiones a anotar
 
@@ -248,3 +256,48 @@ de SP06, SP07, SP08 y SP09 de una sola vez.
 - ¿Qué pasa si un dron recibe una ruta parcial que se agota antes de la siguiente
   replanificación? *(Debe esperar en el sitio, no quedarse sin estado definido.)*
 - Cadencia de replanificación: `W//2` u otra
+
+## Decisiones tomadas
+
+Implementado en `fly_in/simulation/` (`drone.py`, `simulator.py`,
+`errors.py`), probado en `test/test_simulator.py` (90 tests). La historia
+completa, con trazas reales turno a turno, está en
+[`09-narrativa-sp08.md`](../09-narrativa-sp08.md).
+
+| Decisión | Alternativa descartada | Por qué |
+|---|---|---|
+| Límite de seguridad `nb_drones × zonas × 4` (`MAX_TURNS_FACTOR`) | Un número fijo | Un dron tarda como mucho 2 turnos por zona (`restricted`); en fila india, `nb_drones` veces eso. El 4 deja el doble de margen. Challenger: 25 × 54 × 4 = 5400 frente a 43 reales |
+| La fase 1 **confía en la tabla** (ejecuta las rutas planificadas) y la fase 2 **verifica** recontando zonas y conexiones sin mirar la tabla (`_verify`) | Recalcular la ocupación para decidir | Una sola fuente de verdad para las capacidades (SP06/SP07); la verificación independiente convierte un bug de SP06/SP07 en un `SimulationError` en el turno exacto |
+| Ruta agotada antes de la siguiente replanificación → **se replanifica en ese turno** | Esperar en el sitio | Esperar sin reserva deja la zona libre en la tabla y otro dron podría planificar entrar. Replanificando, la espera, si hace falta, queda reservada. En la práctica casi no ocurre: las rutas parciales cubren `W` turnos y se replanifica cada `W/2` |
+| Cadencia `max(1, W // 2)` | `W` | Siempre quedan `W/2` turnos de cooperación por delante; el `max` evita dividir por cero con `W = 1` |
+| En tránsito: `current_zone` sigue siendo la zona de origen y `transit_connection` dice dónde está | Poner `current_zone = None` | El dron no ocupa ninguna zona en el aire (la verificación lo excluye), y la salida necesita el origen para el segundo turno. `Optional[Zone]` obligaría a comprobar `None` en todas partes |
+| La traza es `List[List[Move]]`, un `Move` por dron que se mueve; `arrives=False` marca el primer turno de un tránsito | Devolver texto ya formateado | Separar simulación y formato (SP09). `Move` lleva justo lo que SP09 necesita: `D<id>-<zona>` si `arrives`, `D<id>-<conexión>` si no |
+| Los drones los crea el `Simulator` y son públicos (`sim.drones`) | Recibirlos por parámetro | El test de independencia del orden invierte la lista antes de `run()` |
+| Orden de planificación por id (el de `WhcaPathfinder` por defecto) | `farthest_first`, `rotating` | Medido en los 10 mapas oficiales: `by_id` y `nearest_first` empatan en todos; `farthest_first` casi triplica los turnos (challenger 124 frente a 43) por el coste de la reserva provisional de SP07; `rotating` también empeora (74). Tabla completa con W = 4, 8 y 16 en [SP11](./SP11-benchmarks-y-readme.md) |
+| `W = 8` por defecto | 4 o 12 | Con `W` 4, 8 y 12 los turnos son idénticos en los 19 mapas; 8 queda como valor de partida y el ajuste fino es de SP11 |
+
+**Resultados actuales (W = 8, orden por id)**, fijados en
+`test_official_benchmarks`:
+
+| Mapa | Drones | Objetivo del subject | Turnos | Referencia de Mario |
+|---|---|---|---|---|
+| easy/01 linear path | 2 | ≤ 6 | 4 | 4 |
+| easy/02 simple fork | 4 | ≤ 8 | 4 | 4 |
+| easy/03 basic capacity | 4 | ≤ 6 | 4 | 4 |
+| medium/01 dead end trap | 5 | ≤ 12 | 8 | 8 |
+| medium/02 circular loop | 6 | ≤ 15 | **15** | 10 |
+| medium/03 priority puzzle | 5 | ≤ 12 | 7 | 6 |
+| hard/01 maze nightmare | 8 | ≤ 30 | 13 | 13 |
+| hard/02 capacity hell | 12 | ≤ 35 | 16 | 16 |
+| hard/03 ultimate challenge | 15 | ≤ 45 | 26 | 26 |
+| challenger | 25 | batir 45 | 43 | 43 |
+
+medium/02 sale peor que la referencia por la lectura estricta de `restricted`
+(conexión ocupada los dos turnos del tránsito, decisión de SP06): el enlace
+`loop_b-exit_point` tiene capacidad 1, así que solo entra un dron cada 2
+turnos, y 6 drones necesitan exactamente 15. Es el óptimo con esa lectura, no
+un fallo de la búsqueda. Ver la narrativa, sección 6.3. medium/03 (7 frente
+a 6) tiene la misma causa: la segunda ruta por `slow_path1` (`restricted`)
+solo admite un dron cada 2 turnos. Ejecutando este mismo algoritmo con la
+lectura permisiva salen exactamente 10 y 6 (ver
+[`12-narrativa-sp11.md`](../12-narrativa-sp11.md)).

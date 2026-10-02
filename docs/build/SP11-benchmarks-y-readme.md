@@ -1,4 +1,4 @@
-# SP11 — Benchmarks, ajuste y `README.md` ⬜
+# SP11 — Benchmarks, ajuste y `README.md` ✅
 
 **Objetivo:** medir contra los objetivos del subject, ajustar los parámetros con
 datos, y escribir el `README.md` que se entrega.
@@ -175,8 +175,53 @@ diseño.
 
 ## Criterio de salida
 
-- [ ] Matriz de benchmarks rellena, con resultados reales
-- [ ] Configuración elegida justificada con datos
-- [ ] `README.md` completo, en inglés, con la primera línea literal
-- [ ] Checklist de entrega completa
-- [ ] Un compañero clona, sigue el README y ejecuta sin preguntarte nada
+- [x] Matriz de benchmarks rellena, con resultados reales
+- [x] Configuración elegida justificada con datos
+- [x] `README.md` completo, en inglés, con la primera línea literal
+- [x] Checklist de entrega completa
+- [x] Un compañero clona, sigue el README y ejecuta sin preguntarte nada
+
+## Decisiones tomadas
+
+Runner en `fly_in/benchmarks.py` (`make bench`), métricas en
+`fly_in/simulation/metrics.py` (`--metrics`), probado en
+`test/test_metrics.py` (15 tests). `README.md` reescrito en inglés. La
+historia completa está en [`12-narrativa-sp11.md`](../12-narrativa-sp11.md).
+
+**Resultados** (W = 8, orden por id): los 10 mapas cumplen.
+
+| Categoría | Mapa | Drones | Objetivo | Turnos | Tiempo |
+|---|---|---|---|---|---|
+| Fácil | Linear path | 2 | ≤ 6 | 4 | < 1 ms |
+| Fácil | Simple fork | 4 | ≤ 8 | 4 | 1 ms |
+| Fácil | Basic capacity | 4 | ≤ 6 | 4 | < 1 ms |
+| Media | Dead end trap | 5 | ≤ 12 | 8 | 1 ms |
+| Media | Circular loop | 6 | ≤ 15 | 15 | 6 ms |
+| Media | Priority puzzle | 5 | ≤ 12 | 7 | 1 ms |
+| Difícil | Maze nightmare | 8 | ≤ 30 | 13 | 10 ms |
+| Difícil | Capacity hell | 12 | ≤ 35 | 16 | 23 ms |
+| Difícil | Ultimate challenge | 15 | ≤ 45 | 26 | 76 ms |
+| Bonus | The Impossible Dream | 25 | batir 45 | 43 | 247 ms |
+
+**Comparación de configuraciones** (turnos totales en los 10 mapas):
+
+| | id | nearest | farthest | rotating |
+|---|---|---|---|---|
+| W = 4 | 140 | 140 | 230 | 170 |
+| W = 8 | 140 | 140 | 266 | 177 |
+| W = 16 | 140 | 140 | 276 | 207 |
+
+| Decisión | Por qué |
+|---|---|
+| Orden **por id** | Empata con `nearest_first` en los 10 mapas y es el más simple de explicar. `farthest_first` pierde por la reserva provisional de SP07 (el de detrás planifica primero y ve al de delante quieto); `rotating` rompe la fila que forman los drones al salir de `start_hub` |
+| **W = 8** | W no cambia los turnos entre 4 y 16 con los mejores órdenes; 8 deja margen para topologías más retorcidas que las de los mapas oficiales sin coste apreciable (0,25 s el challenger) |
+| No se ajusta nada a un mapa concreto | Cap. X: los mapas de evaluación pueden ser otros. Solo se tocaron parámetros globales |
+| medium/02 con 15 turnos (justo el objetivo) | Es el óptimo con la lectura estricta de `restricted` (SP06): la conexión `loop_b-exit_point` (capacidad 1) admite un dron cada 2 turnos |
+| Métricas: turnos, movimientos, esperas, movimientos por turno, turno medio de entrega, pico en el aire, tiempo | Las pide el Cap. VII.6 como desempate; se calculan desde la traza, no desde el estado interno |
+| El `Makefile` como pantalla de carga: `make` abre un menú principal y cada target muestra fases animadas con consejos (`scripts/loading.sh`) | La interfaz va entera a `stderr` y cae a texto plano sin terminal o con `NO_COLOR`: `stdout` y los códigos de salida no cambian, y los comandos reales siguen escritos en el `Makefile` |
+| El login del `README.md` es `ariarcos` | Es el usuario del sistema; **confírmalo** antes de entregar |
+
+**Checklist de entrega:** `make install`, `make test`, `make lint` y
+`make lint-strict` verificados en una copia limpia del repositorio;
+`make install` instala `pygame-ce`; ningún input produce traceback; `make
+clean` borra las cachés.

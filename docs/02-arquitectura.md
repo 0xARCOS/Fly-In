@@ -32,6 +32,7 @@ Estado actual y destino. Cada archivo indica en qué subproyecto nace.
 ```
 fly_in/
 ├── main.py                        # SP03 — punto de entrada, argumentos, orquestación
+├── benchmarks.py                  # SP11 — objetivos oficiales y make bench
 ├── models/                        # El dominio. Sin lógica de algoritmo.
 │   ├── zone.py                    # SP01 ✅ Zone, ZoneType
 │   ├── connection.py              # SP01 ✅ Connection
@@ -46,12 +47,20 @@ fly_in/
 │   └── whca.py                    # SP07 — WhcaPathfinder, SearchNode
 ├── simulation/                    # Se crea en SP08
 │   ├── drone.py                   # SP08 — Drone, DroneState
-│   └── simulator.py               # SP08 — Simulator
+│   ├── simulator.py               # SP08 — Simulator, Move
+│   ├── metrics.py                 # SP11 — Metrics
+│   └── errors.py                  # SP08 — SimulationError
 ├── output/                        # Se crea en SP09
 │   └── formatter.py               # SP09 — OutputFormatter
 └── visualization/                 # Se crea en SP10
+    ├── palette.py                 # SP10 — colores y códigos ANSI
+    ├── canvas.py                  # SP10 — MapLayout, Canvas
     ├── terminal_view.py           # SP10 — TerminalRenderer
-    └── graphic_view.py            # SP10 — GraphicRenderer (opcional)
+    ├── recorder.py                # SP10 — ReplayRecorder: posiciones por turno
+    ├── scene.py                   # SP10 — Scene: fotogramas precalculados (sin pygame)
+    ├── pygame_view.py             # SP10 — PygameView: la ventana (único import de pygame)
+    ├── session.py                 # SP10 — Session, Run: elegir vista y enseñar
+    └── event_log.py               # SP10 — EventLog: el log de la terminal
 ```
 
 ⚠️ **No lo des por sentado — cada carpeta necesita su `__init__.py`**

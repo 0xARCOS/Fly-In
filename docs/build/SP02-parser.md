@@ -22,6 +22,12 @@ correcta; los de `maps/valid/` parsean sin excepción.
 La clave del diseño es que **cada función hace una sola transformación** y se
 puede probar sola en el intérprete:
 
+> **Estado actual del código.** Para cumplir *"The project must be completely
+> object-oriented"* (Cap. V), estas funciones viven ahora como
+> `@staticmethod` de `MapParser`: se llaman `MapParser.clean_lines(...)`,
+> `MapParser.parse_metadata(...)`, etc. La lógica y los nombres son los mismos
+> que se describen aquí. Ver [`14-cumplimiento-subject.md`](../14-cumplimiento-subject.md).
+
 ```mermaid
 flowchart LR
     T[texto del fichero] --> C[clean_lines<br/>quita comentarios y vacías]

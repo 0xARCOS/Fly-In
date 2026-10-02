@@ -11,8 +11,10 @@ qué cambia en la ejecución del programa por culpa de ella.
 > [`fly_in/pathfinding/reservation_table.py`](../fly_in/pathfinding/reservation_table.py)
 > y cubierto por
 > [`test/test_reservation_table.py`](../test/test_reservation_table.py). SP07
-> todavía no tiene código: su parte describe el diseño cerrado en
-> [`SP07-whca.md`](./build/SP07-whca.md), que es el que se va a implementar.
+> está implementado en
+> [`fly_in/pathfinding/whca.py`](../fly_in/pathfinding/whca.py) y cubierto por
+> [`test/test_whca.py`](../test/test_whca.py). La historia continúa con el
+> simulador en [`09-narrativa-sp08.md`](./09-narrativa-sp08.md).
 
 ---
 
@@ -283,7 +285,8 @@ aterrizar. No hay forma de recuperarse de eso. Con `keep`, SP08 pasa los ids de
 los drones en tránsito y sus reservas se conservan enteras; los demás las ven y
 las esquivan, y esos drones no se replanifican en ese ciclo.
 
-La limpieza la hace el helper privado **`_cleared`**, que construye un
+La limpieza la hace el helper privado **`_filtered`** (compartido con
+`release`, que borra las reservas de un solo dron), que construye un
 diccionario nuevo en lugar de borrar entradas del existente. No es una
 preferencia de estilo: borrar claves de un diccionario mientras se recorre
 lanza `RuntimeError: dictionary changed size during iteration`. De paso, copia
@@ -547,3 +550,7 @@ implementaciones. Preferimos la regla correcta al número más bajo.
 | Ventana `W` + ruta parcial | Acotar la búsqueda y replanificar con información fresca | Búsquedas enormes y reservas que condicionan todo el futuro |
 | Grabar antes del siguiente | Que cada dron vea a los anteriores | Todos los drones con la misma ruta |
 | Orden de prioridad | Decidir quién se lleva las mejores reservas | Resultado dependiente de un detalle arbitrario |
+
+Continúa en [`09-narrativa-sp08.md`](./09-narrativa-sp08.md): cómo el
+simulador convierte estas rutas en turnos, y qué pasa con ellas en los mapas
+oficiales.

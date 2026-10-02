@@ -1,4 +1,4 @@
-# SP07 — `WhcaPathfinder`: la búsqueda cooperativa ⬜
+# SP07 — `WhcaPathfinder`: la búsqueda cooperativa ✅
 
 **Objetivo:** buscar rutas en **espacio-tiempo**, esquivando las reservas de los
 drones que ya planificaron, dentro de una ventana de `W` turnos.
@@ -222,16 +222,16 @@ como un `sorted()` incrustado. Vas a querer comparar dos criterios en
 
 Escríbelos **en este orden**. Cada uno solo tiene sentido si el anterior pasa.
 
-- [ ] **Un dron, tabla vacía:** la ruta es idéntica a la de `Dijkstra` de SP04.
+- [x] **Un dron, tabla vacía:** la ruta es idéntica a la de `Dijkstra` de SP04.
       *(Si esto falla, el bug está en la búsqueda, no en la cooperación.)*
-- [ ] **Un dron, mapa con `blocked`:** la rodea
-- [ ] **Dos drones, `bottleneck.txt`:** el segundo espera un turno y pasa; ninguno se queda bloqueado
-- [ ] **Dos drones, `bottleneck.txt`:** las rutas no violan `max_drones=1` en `narrow` en ningún turno
-- [ ] **Tres drones, `bottleneck.txt`:** los tres llegan; se alternan
-- [ ] **Ventana pequeña (`W=2`) en un mapa largo:** devuelve ruta **parcial**, nunca `None`
-- [ ] **Dron encerrado** (todos los vecinos reservados): devuelve la espera en el sitio, no `None`
-- [ ] **Ruta por `restricted`:** el tránsito reserva la conexión dos turnos consecutivos
-- [ ] **`swap_corridor.txt`:** dos drones en sentidos opuestos por un pasillo de una zona. **Documenta qué pasa**, sea lo que sea: es el caso patológico conocido de WHCA\*
+- [x] **Un dron, mapa con `blocked`:** la rodea
+- [x] **Dos drones, `bottleneck.txt`:** el segundo espera un turno y pasa; ninguno se queda bloqueado
+- [x] **Dos drones, `bottleneck.txt`:** las rutas no violan `max_drones=1` en `narrow` en ningún turno
+- [x] **Tres drones, `bottleneck.txt`:** los tres llegan; se alternan
+- [x] **Ventana pequeña (`W=2`) en un mapa largo:** devuelve ruta **parcial**, nunca `None`
+- [x] **Dron encerrado** (todos los vecinos reservados): devuelve la espera en el sitio, no `None`
+- [x] **Ruta por `restricted`:** el tránsito reserva la conexión dos turnos consecutivos
+- [x] **`swap_corridor.txt`:** dos drones en sentidos opuestos por un pasillo de una zona. **Documenta qué pasa**, sea lo que sea: es el caso patológico conocido de WHCA\*
 
 El último test no tiene un resultado "correcto" prefijado. Su valor es que
 **conozcas y documentes** el comportamiento de tu algoritmo en el caso donde la
@@ -242,10 +242,10 @@ por qué" vale muchísimo más que fingir que siempre funciona.
 
 ## Criterio de salida
 
-- [ ] Los 9 tests pasan (o el noveno está documentado como limitación conocida)
-- [ ] `W` es un parámetro, no una constante incrustada
-- [ ] El criterio de prioridad es intercambiable
-- [ ] `make lint-strict` pasa
+- [x] Los 9 tests pasan (o el noveno está documentado como limitación conocida)
+- [x] `W` es un parámetro, no una constante incrustada
+- [x] El criterio de prioridad es intercambiable
+- [x] `make lint-strict` pasa
 
 ## Decisiones a anotar
 
@@ -253,3 +253,71 @@ por qué" vale muchísimo más que fingir que siempre funciona.
 - Criterio de prioridad elegido, con la comparación que lo respalda
 - ¿Implementaste la regla anti-cruce (`would_swap`)? *(Ver [SP06](./SP06-tabla-reservas.md).)*
 - Comportamiento en `swap_corridor.txt` — **la limitación que vas a documentar en el README**
+
+## Decisiones tomadas
+
+Implementado en `fly_in/pathfinding/whca.py`, probado en `test/test_whca.py`
+(50 tests).
+
+| Decisión | Alternativa descartada | Por qué |
+|---|---|---|
+| `W = 8` por defecto (`DEFAULT_WINDOW`), parámetro del constructor | Constante incrustada | Es el valor de partida del documento; se ajustará con datos en [SP11](./SP11-benchmarks-y-readme.md) |
+| Orden por id (`by_id`) por defecto; `nearest_first(h)`, `farthest_first(h)` y `rotating` disponibles, se pasan como `order=` | `sorted()` dentro de la búsqueda | Al empezar todos están en `start_hub` con la misma `h`, así que el orden por `h` solo importa tras la primera replanificación. Con la reserva provisional conviene que planifique antes el de delante: `nearest_first` lo garantiza; `farthest_first` hace lo contrario. La comparación con datos queda para SP11 |
+| `plan()` hace primero una **reserva provisional**: cada dron reserva quedarse en su zona los `W` turnos de la ventana, y la cambia por su ruta real (`table.release` + `reserve`) justo antes de planificar | Reservar solo el instante `T`, o nada | Ver la sección siguiente. Reservar `T` no sirve: `clear_from(T)` ya lo borra, y el conflicto está en `T+1` en adelante |
+| `SearchNode` lleva `neg_priority` justo detrás de `f` | El nodo del documento (sin él) | Sin él, ante dos rutas de igual coste A\* elige la descubierta antes y no replica a Dijkstra en `priority_tie.txt`. Es un desempate aproximado: `h` no sabe cuántas `priority` quedan por delante |
+| `zone_name` detrás de `tie` | Delante, como en el documento | `tie` es único, así que `zone_name` nunca se compara: imposible desempatar por orden alfabético |
+| Anti-cruce (`would_swap`) activo: lo aplica `can_move` de SP06 | — | Ver SP06 |
+| `WhcaPathfinder.plan(drones, turno)` ordena, busca y graba cada ruta antes de la siguiente; `reserve()` hace el Paso 5 | Dejar el bucle a SP08 | El orden y la grabación son parte de la cooperación; SP08 solo llama a `plan` |
+| `find_path` recibe cualquier objeto con `id` y `current_zone` (`DroneLike`, un `Protocol`) | Importar `Drone` | `Drone` no existe hasta SP08; el `Drone` real cumplirá el protocolo sin cambios |
+| Dron ya en `end_hub` → `[]` | Una espera | No hay nada que hacer: SP08 no replanifica drones entregados |
+
+**Comportamiento en `swap_corridor.txt`:**
+
+- Con un único `end_hub` y una `h` exacta, dos drones que planifican sin
+  interferencias nunca quieren cruzar el mismo pasillo en sentidos opuestos:
+  haría falta a la vez `h(oeste) > h(este)` y `h(este) > h(oeste)`. El cruce de
+  frente solo aparece cuando un dron se ha apartado.
+- Si el que espera al otro lado tiene sitio para quedarse, `would_swap` lo
+  hace esperar hasta que el pasillo queda libre, y pasa.
+- `find_path` **en solitario** tiene una limitación: si alguien ya reservó
+  aterrizar en la zona de capacidad 1 donde está el dron, y además le cierra
+  la salida, el dron no puede cruzar ni quedarse. Devuelve la espera de último
+  recurso, que no cabe en la tabla. La causa es que la tabla solo conoce las
+  reservas de quien ya planificó, no la posición actual de los demás. El test
+  `test_swap_corridor_known_limitation_unreservable_wait` lo deja fijado.
+
+### Resuelto en `plan()`: la reserva provisional
+
+El conflicto anterior no es exclusivo de pasillos: pasa en cualquier replanificación
+en la que un dron que planifica antes reserve entrar en la zona de otro que aún
+no ha planificado y que no tiene salida (por ejemplo, porque un dron en
+tránsito conservado con `keep` le tapa el camino). Sin la corrección,
+`plan()` lanzaba `ReservationError: D2: zone cell is full at turn 1`
+(`test_plan_does_not_let_earlier_drone_trap_a_later_one`).
+
+La corrección:
+
+1. Antes de planificar a nadie, cada dron reserva quedarse en su zona en los
+   instantes `T+1 … T+W` (`_hold`). Si en algún instante ya no cabe (un dron
+   en tránsito aterriza ahí), se para: ese dron tiene que irse antes, y su
+   búsqueda ya lo verá.
+2. Justo antes de buscar la ruta de un dron, `table.release(id, T)` le borra
+   la reserva provisional y se graba su ruta real.
+
+Garantía: quien planifica antes respeta la reserva provisional, así que cada
+dron puede siempre, como mínimo, esperar donde está durante toda la ventana, y
+esa espera **cabe** en la tabla. `plan()` ya no puede dejar a un dron sin
+instrucciones legales (salvo el caso del paso 1, en el que el dron tenía que
+salir de todos modos).
+
+Coste: es conservadora. Si el dron de detrás planifica antes, ve al de delante
+"quieto" toda la ventana y espera, aunque el de delante fuera a irse
+(`test_plan_with_hold_blocking_earlier_planner_waits_not_crashes`). Por eso
+existe `nearest_first`: el de delante planifica primero, libera su zona y el
+de detrás lo sigue sin perder turnos (`test_nearest_first_avoids_the_hold_cost`).
+Qué orden gana en los mapas oficiales se medirá en SP11.
+
+**Nota sobre los tests:** el bug 4 ("ventana antes que objetivo") no cambia el
+resultado en esta implementación. La búsqueda recorre toda la ventana y se
+queda con el borde de menor `f`, y un nodo objetivo tiene `f = g`, que nunca
+supera el `f` de un nodo de borde. Aun así, el orden correcto se mantiene.
