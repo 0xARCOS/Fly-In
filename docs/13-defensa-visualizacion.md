@@ -345,6 +345,7 @@ enseña que la terminal sigue.
 | El log cuenta bien cuellos de botella y tránsitos | `test_log_tells_the_bottleneck_story`, `test_log_narrates_the_restricted_transit` |
 | Sin color no hay ANSI | `test_log_without_color_has_no_ansi` |
 | Cada dron, un solo color (log y ventana) | `test_each_drone_has_one_color_in_the_log` |
+| D1–D7: los siete colores Okabe-Ito, ninguno parecido a otro | `test_first_seven_drones_use_distinct_okabe_ito_colors` |
 | La escena coloca bien a cada dron y cuenta bien | `test_scene_puts_airborne_drones_on_the_middle_of_the_link`, `test_scene_gives_every_drone_its_own_slot_in_a_crowd`, `test_scene_knows_which_links_each_turn_uses`, `test_scene_counts_deliveries_and_replans` |
 | La ventana dibuja todos los turnos de todos los mapas sin fallar | `test_window_draws_every_turn_of_every_map` (19 mapas) |
 | Ventana y log avanzan juntos | `test_window_session_plays_in_sync_with_the_log` |

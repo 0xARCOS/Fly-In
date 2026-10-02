@@ -91,7 +91,8 @@ desactivado devuelve el texto tal cual: el resto del código no necesita saber
 si hay color.
 
 Los drones también tienen color propio, con `Palette.drone_color(id)`: D1 a
-D7 toman la paleta Okabe-Ito (pensada para que se distinga con daltonismo), y
+D7 toman los siete colores de la paleta Okabe-Ito sin el negro (pensada para
+que se distinga con daltonismo), y
 a partir de D8 los tonos avanzan 0,618 vueltas (el ángulo áureo) de un id al
 siguiente, así que dos drones consecutivos nunca se parecen. El mismo dron
 tiene el mismo color en la ventana, en la leyenda del log y en cada línea del
