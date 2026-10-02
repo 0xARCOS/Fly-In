@@ -2,7 +2,7 @@
 
 El estado de búsqueda ya no es `zona` sino `(zona, turno)`. Las reservas de
 los drones que planificaron antes son obstáculos que existen solo en ciertos
-turnos, y la búsqueda 11 los esquiva sola: una colisión simplemente no está
+turnos, y la búsqueda los esquiva sola: una colisión simplemente no está
 entre los estados alcanzables.
 
 Usa la convención de tiempo de ReservationTable (SP06): el "instante t" es
@@ -104,7 +104,7 @@ class WhcaPathfinder:
 
         Args:
             graph: Grafo del mapa (con end_hub).
-            heuristic: Distancias abstractas al end_hub (SP05).f
+            heuristic: Distancias abstractas al end_hub (SP05).
             table: Tabla de reservas compartida por todos los drones.
             window: Turnos que se miran hacia delante cooperando.
             order: Criterio de prioridad entre drones; por defecto, por id.

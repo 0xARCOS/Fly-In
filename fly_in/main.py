@@ -20,11 +20,7 @@ from fly_in.output.formatter import OutputFormatter
 from fly_in.pathfinding.abstract_distance import AbstractDistance
 from fly_in.simulation.errors import SimulationError
 from fly_in.simulation.metrics import Metrics
-from fly_in.simulation.simulator import (
-    ObserverGroup,
-    SimulationObserver,
-    Simulator,
-)
+from fly_in.simulation.simulator import Simulator
 from fly_in.visualization.palette import Painter
 from fly_in.visualization.recorder import ReplayRecorder
 from fly_in.visualization.session import (
@@ -32,8 +28,6 @@ from fly_in.visualization.session import (
     Run,
     Session,
 )
-from fly_in.visualization.terminal_view import TerminalRenderer
-from fly_in.simulation.capacity_observer import CapacityObserver
 
 
 class FlyIn:
@@ -75,19 +69,15 @@ class FlyIn:
             help="WHCA* window size in turns (default: 8)"
         )
         parser.add_argument(
-            "--no-color", action="store_true",
-            help="Disable terminal colors"
-        )
-        parser.add_argument(
             "-q", "--quiet", action="store_true",
             help="Disable the real-time visualization"
         )
         parser.add_argument(
             "--view",
-            choices=("auto", "window", "log", "none"),
+            choices=("auto", "window", "log"),
             default="auto",
             help="window: pygame window + event log here; "
-                 "log: event log only; hud: full-screen terminal HUD "
+                 "log: event log only "
                  "(default: window if there is a display, else log)"
         )
         parser.add_argument(
@@ -96,16 +86,7 @@ class FlyIn:
         )
         parser.add_argument(
             "-d", "--delay", type=FlyIn.non_negative_float, default=None,
-            help="Seconds per turn (default: window 0.8, log 0.25, hud 0.4)"
-        )
-        parser.add_argument(
-            "--capacity-info", action="store_true",
-            help="Display zone and connection capacity "
-                 "information during simulation"
-        )
-        parser.add_argument(
-            "--color-output", action="store_true",
-            help="Print colored trace output on stderr"
+            help="Seconds per turn (default: window 0.8, log 0.25)"
         )
         return parser
 
@@ -161,12 +142,9 @@ class FlyIn:
             raise MapError(f"Cannot read {path}: {exc.strerror}")
 
     @staticmethod
-    def make_painter(args: argparse.Namespace) -> Painter:
-        """Color solo en terminal, sin --no-color ni la variable NO_COLOR."""
-        enabled = (
-            sys.stderr.isatty() and not args.no_color
-            and "NO_COLOR" not in os.environ
-        )
+    def make_painter() -> Painter:
+        """Color solo en terminal y sin la variable NO_COLOR."""
+        enabled = sys.stderr.isatty() and "NO_COLOR" not in os.environ
         return Painter(enabled, Painter.supports_truecolor())
 
     @staticmethod
@@ -202,34 +180,13 @@ class FlyIn:
         delay = args.delay if args.delay is not None else (
             DEFAULT_DELAYS.get(view, 0.0)
         )
-        paint = FlyIn.make_painter(args)
+        paint = FlyIn.make_painter()
         target = BenchmarkSuite.target_for(args.map_file)
 
         sim = Simulator(graph, nb_drones, args.window)
         recorder = ReplayRecorder(sim.drones)
-
-        # Build observer list based on options
-        observers: list[SimulationObserver] = [recorder]
-        if args.capacity_info:
-            observers.insert(0, CapacityObserver(graph))
-
-        if view == "hud":
-            renderer = TerminalRenderer(
-                graph, nb_drones, sys.stderr, paint, live=interactive,
-                delay=delay, title=args.map_file.name, window=args.window,
-                target=target,
-            )
-            # El renderer oculta el cursor y lo devuelve al salir, también
-            # si la simulación falla o el usuario pulsa Ctrl+C.
-            with renderer:
-                renderer.intro()
-                observers.insert(0, renderer)
-                trace = sim.run(ObserverGroup(*observers))
-                metrics = Metrics.from_trace(trace, nb_drones, sim.elapsed)
-                renderer.finish(metrics)
-        else:
-            trace = sim.run(ObserverGroup(*observers))
-            metrics = Metrics.from_trace(trace, nb_drones, sim.elapsed)
+        trace = sim.run(recorder)
+        metrics = Metrics.from_trace(trace, nb_drones, sim.elapsed)
 
         if view in ("window", "log"):
             # Sin terminal no se hacen pausas: nadie las está mirando.
@@ -241,18 +198,6 @@ class FlyIn:
         for line in OutputFormatter.format_trace(trace):
             print(line)
         sys.stdout.flush()
-
-        # Colored output if requested
-        if args.color_output:
-            try:
-                print("\n=== Colored Trace ===", file=sys.stderr)
-                for i, line in enumerate(
-                    OutputFormatter.format_trace_colored(trace, paint),
-                    start=1
-                ):
-                    print(f"Turn {i:3d}: {line}", file=sys.stderr)
-            except BrokenPipeError:
-                pass  # stderr closed, ignore
 
         if args.metrics:
             FlyIn.print_metrics(metrics)

@@ -39,16 +39,15 @@ NAMED: Dict[str, RGB] = {
     "magenta": (255, 60, 220), "brown": (170, 100, 50),
 }
 
-# Paleta Okabe-Ito: 8 colores accesibles para daltonismo.
+# Paleta Okabe-Ito sin el negro (invisible sobre el fondo): D1 a D7.
 OKABE_ITO_COLORS: Tuple[RGB, ...] = (
-    (230, 159, 0),    # 0: Amarillo/Naranja
-    (86, 180, 233),   # 1: Azul cielo
-    (0, 158, 115),    # 2: Verde azulado
-    (213, 94, 0),     # 3: Naranja oscuro
-    (204, 121, 167),  # 4: Rosa
-    (0, 114, 178),    # 5: Azul
-    (240, 228, 66),   # 6: Amarillo
-    (230, 97, 0),     # 7: Naranja rojo
+    (86, 180, 233),   # D1: azul cielo
+    (0, 158, 115),    # D2: verde azulado
+    (213, 94, 0),     # D3: bermellón
+    (204, 121, 167),  # D4: púrpura rojizo
+    (0, 114, 178),    # D5: azul
+    (240, 228, 66),   # D6: amarillo
+    (230, 159, 0),    # D7: naranja
 )
 
 # La paleta estándar de 16 colores de xterm, para terminales sin truecolor.
@@ -106,11 +105,11 @@ class Palette:
     def drone_color(drone_id: int) -> RGB:
         """Un tono vivo y distinto por dron.
 
-        Primeros 8 drones: paleta Okabe-Ito (accesible a daltonismo).
-        Resto: ángulo dorado entre vecinos.
+        D1 a D7: paleta Okabe-Ito (accesible a daltonismo).
+        Desde D8: ángulo dorado entre vecinos.
         """
-        if drone_id < len(OKABE_ITO_COLORS):
-            return OKABE_ITO_COLORS[drone_id]
+        if 1 <= drone_id <= len(OKABE_ITO_COLORS):
+            return OKABE_ITO_COLORS[drone_id - 1]
         return Palette.hue((drone_id - 8) * 0.61803398875, saturation=0.65)
 
 
@@ -122,7 +121,7 @@ class Painter:
     """
 
     def __init__(self, enabled: bool, truecolor: bool = True) -> None:
-        """`enabled=False` produce texto plano (--no-color, tuberías)."""
+        """`enabled=False` produce texto plano (NO_COLOR, tuberías)."""
         self.enabled = enabled
         self.truecolor = truecolor
 

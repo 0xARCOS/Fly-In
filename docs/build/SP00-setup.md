@@ -49,8 +49,11 @@ evaluador puede comprobarlos a ojo.
 | `debug` | `python -m pdb -m fly_in.main` | Depuración sin montar configuración de IDE |
 | `lint` | `flake8 .` + `mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs` | **Literal del subject**, mandatory |
 | `lint-strict` | `flake8 .` + `mypy . --strict` | **Literal del subject**, marcado opcional pero se mantiene |
-| `clean` | Borra `.venv`, `.mypy_cache`, `.pytest_cache`, `*.egg-info`, todos los `__pycache__` | Devuelve el repo al estado "recién clonado" |
-| `test` | `pytest` | Extra, no pedido por el subject. Se añadió porque SP02 lo necesita de inmediato |
+| `clean` | Borra `.mypy_cache`, `.pytest_cache`, `*.egg-info` y todos los `__pycache__`, sin entrar en `.venv` | El subject pide borrar temporales y cachés; el entorno no es temporal |
+| `test` | `pytest -q` | Extra, no pedido por el subject. Se añadió porque SP02 lo necesita de inmediato |
+| `bench` | `python -m fly_in.benchmarks` | Extra: los 10 mapas oficiales contra su objetivo ([SP11](./SP11-benchmarks-y-readme.md)) |
+
+`make` sin argumentos ejecuta `install` (`.DEFAULT_GOAL`).
 
 ⚠️ **No lo des por sentado — usa `$(VENV)/bin/python` explícito**
 Si escribes `python -m flake8`, el resultado depende de si el desarrollador
@@ -61,8 +64,8 @@ funciona" y "funciona".
 ⚠️ **No lo des por sentado — los targets van en `.PHONY`**
 `make` asume que un target produce un archivo con ese nombre. Si algún día
 existiera un archivo llamado `test` o `clean`, `make test` diría *"nothing to be
-done"* y no ejecutaría nada. `.PHONY: install run debug lint lint-strict test
-clean` lo evita.
+done"* y no ejecutaría nada. `.PHONY: install run bench debug lint lint-strict
+test clean` lo evita.
 
 ## Paso 3 — `pyproject.toml` y `.flake8`
 
@@ -76,11 +79,14 @@ de paquetes *(Cap. III.2)*.
 **Por qué los flags de mypy viven en el `Makefile` y no en `[tool.mypy]`:**
 porque el subject los fija literalmente. Duplicarlos en los dos sitios es
 pedir que algún día divergan. `[tool.mypy]` guarda solo lo que el subject **no**
-especifica: `python_version`, `no_implicit_optional`, la exclusión de `.venv/`.
+especifica: `python_version`, `no_implicit_optional` y las exclusiones
+(`.venv`, `entrega`). `[tool.pytest.ini_options]` limita los tests a `test/`.
 
 **Por qué existe un archivo `.flake8` aparte:** a diferencia de `mypy`, flake8
 no lee configuración de `pyproject.toml` de forma nativa (haría falta un plugin
-externo). Su config va en su propio archivo.
+externo). Su config va en su propio archivo, y solo excluye directorios
+(`.venv`, `.git`, cachés, `*.egg-info`, `entrega`): el resto son las reglas por
+defecto de flake8, líneas de 79 caracteres incluidas.
 
 ## Paso 4 — `.gitignore`
 
@@ -125,6 +131,9 @@ Fly-In: proyecto inicializado (Fase 0). Aun no simula nada.
 $ make clean
 ```
 
+Esa fue la salida al cerrar SP00. Hoy, con el proyecto completo, `make lint`
+y `make lint-strict` dan `Success: no issues found in 40 source files`.
+
 `make lint` detectó un fallo de tipos real y preexistente: `Graph.__init__` sin
 anotar `-> None` en [`graph.py`](../../fly_in/models/graph.py). Se corrigió en
 el mismo commit — sin anotar, `lint-strict` habría fallado desde el primer día.
@@ -135,5 +144,5 @@ el mismo commit — sin anotar, `lint-strict` habría fallado desde el primer d�
 |---|---|
 | `pyproject.toml` + extras `[dev]` en vez de `requirements.txt` | Un solo archivo, un solo comando de instalación |
 | Flags de mypy literales en el `Makefile` | El subject los fija así; evitar duplicación con `[tool.mypy]` |
-| `max-line-length = 100` en `.flake8` | 79 (el defecto de PEP 8) es incómodo con nombres largos y type hints; 100 sigue siendo legible en pantalla partida |
+| Límite de línea por defecto de flake8 (79) | Es el de PEP 8 y el que comprueba cualquier evaluador con `flake8 .` sin configuración extra |
 | Target `test` aunque no lo pida el subject | SP02 lo necesita inmediatamente y no cuesta nada dejarlo listo |

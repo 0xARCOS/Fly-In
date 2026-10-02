@@ -21,14 +21,14 @@ Cómo usarlo:
 
 | Frase del subject | Dónde se cumple |
 |---|---|
-| *"Your implementation must provide visual feedback of the simulation, either through colored terminal output … or a graphical interface … or both"* (Cap. VII.1) | Las **dos** cosas: una ventana gráfica con pygame (`pygame_view.py`) **y** un log de eventos a color en la terminal (`event_log.py`). Además, el HUD de terminal (`--view hud`) |
+| *"Your implementation must provide visual feedback of the simulation, either through colored terminal output … or a graphical interface … or both"* (Cap. VII.1) | Las **dos** cosas: una ventana gráfica con pygame (`pygame_view.py`) **y** un log de eventos a color en la terminal (`event_log.py`) |
 | *"When colors are specified, the implementation should provide visual feedback through colored terminal output or graphical representation"* (Cap. VI) | `Palette.resolve` convierte el `color=` de cada zona, en la terminal y en la ventana |
 | *"Accepted values for color are any valid single-word strings … There is no fixed list"* (Cap. VI) | Ninguna palabra falla: tabla conocida → `rainbow` → `#rrggbb` → tono derivado del hash (§3.6) |
 | *"How does your visual representation enhance understanding of the simulation?"* (Cap. VII.1) | §4 de este documento: la respuesta preparada |
-| *"Quality and usefulness of visual representation"* (métrica secundaria, Cap. VII.6) | Capacidad visible, tránsitos visibles, replanificaciones visibles, línea de `stdout` en pantalla |
+| *"Quality and usefulness of visual representation"* (métrica secundaria, Cap. VII.6) | Capacidad visible, tránsitos visibles, replanificaciones visibles, y en el log la línea de `stdout` de cada turno |
 | *"The simulation must output the step-by-step movement"* (Cap. VII.5) | La visualización **nunca** toca `stdout`: la ventana, o `stderr` ([F2](./07-diagramas.md#f2--los-dos-canales-de-salida-stdout-y-stderr)) |
 | *"If your program crashes due to unhandled exceptions … non-functional"* (Cap. III.1) | Sin pygame, sin pantalla, sin terminal, si se cierra la ventana o si se corta la tubería: el programa sigue o sale limpio ([F3](./07-diagramas.md#f3--frontera-de-excepciones-y-códigos-de-salida)) |
-| *"Prefer context managers for resources"* (Cap. III.1) | `with PygameView(...)` (cierra pygame) y `with TerminalRenderer(...)` (devuelve el cursor) ([F8](./07-diagramas.md#f8--recursos-y-su-liberación)) |
+| *"Prefer context managers for resources"* (Cap. III.1) | `with PygameView(...)` (cierra pygame) ([F8](./07-diagramas.md#f8--recursos-y-su-liberación)) |
 | *"Any library that helps with graph logic is forbidden"* (Cap. V) | pygame solo dibuja: no sabe nada de grafos ni de rutas. Toda la lógica de grafos es propia |
 
 ---
@@ -44,8 +44,6 @@ fly_in/visualization/
 │                     Projection, Glow, Fonts,     piezas del dibujo
 │                     Particle
 ├── event_log.py      EventLog                     el log de la terminal
-├── terminal_view.py  TerminalRenderer             el HUD de terminal
-├── canvas.py         MapLayout, Canvas            el mapa dibujado con caracteres (HUD)
 └── palette.py        Palette, Painter             colores y códigos ANSI
 ```
 
@@ -61,16 +59,13 @@ divergir.
 2. Se enseña lo grabado: `Session.play`, a ritmo de `--delay`.
 3. Se imprime `stdout` de golpe.
 
-La excepción es el HUD, que dibuja **mientras** simula.
-
 **Las vistas y cuándo se usa cada una:**
 
 | Vista | Qué se ve | Se elige sola cuando… |
 |---|---|---|
 | `window` | Ventana pygame **y** log en la terminal, turno a turno a la vez | Hay terminal **y** pantalla gráfica |
 | `log` | Solo el log de eventos | No hay terminal o no hay pantalla gráfica |
-| `hud` | Mapa en caracteres a pantalla completa, paneles de zonas y eventos | Nunca sola: `--view hud` o `make hud` |
-| `none` | Nada | `-q` / `--quiet` |
+| ninguna | Nada | `-q` / `--quiet` |
 
 **¿Por qué pygame?** El subject pide una interfaz gráfica o terminal a color.
 pygame es la biblioteca gráfica de Python más conocida, dibuja con primitivas
@@ -106,8 +101,8 @@ título, `W` y PAR. `Session` la enseña en la vista `window` o `log`.
   mismo bucle: se escribe el bloque del turno `k` y se anima el turno `k`. No
   hay sincronización que pueda fallar ni condiciones de carrera.
 - **Import perezoso de pygame.** `pygame_view` se importa dentro de
-  `_play_window`, solo cuando se va a abrir una ventana. Por eso `--view log`,
-  el HUD y todos los tests del algoritmo funcionan aunque pygame no esté
+  `_play_window`, solo cuando se va a abrir una ventana. Por eso `--view log`
+  y todos los tests del algoritmo funcionan aunque pygame no esté
   instalado.
 - **`AnimatedView` es un `Protocol`** (igual que `DroneLike` en SP07):
   `_play_log` necesita "algo con `closed` y `play_turn`", sin importar la clase
@@ -164,7 +159,7 @@ consulta 60 veces por segundo:
 | `spots[k][dron]` | Un `Spot`: el punto del mapa donde va (una zona, o el punto medio de la conexión si está en el aire), y su hueco si comparte zona |
 | `occupants[k]` | Qué drones hay en cada zona |
 | `used[k]` | Qué conexiones se recorren de `k-1` a `k`, en qué sentido y con qué dron |
-| `delivered[k]`, `airborne[k]` | Contadores para el HUD |
+| `delivered[k]`, `airborne[k]` | Contadores de entregados y drones en el aire (el número sobre `end_hub`) |
 | `replan_turns` | Turnos que empiezan con una replanificación |
 
 `scene.py` **no importa pygame**, así que se prueba sin pantalla
@@ -199,7 +194,7 @@ correctas y las entregas se cuentan bien.
 
 **El fotograma** ([10.6](./07-diagramas.md#106-un-fotograma-de-la-ventana)).
 `_paint` dibuja por capas, de atrás hacia delante: fondo, estrellas,
-conexiones, zonas, drones, efectos, etiquetas, HUD y tarjeta. Al final,
+conexiones, zonas, drones, efectos, etiquetas y, si toca, la tarjeta. Al final,
 `pygame.display.flip()` enseña el fotograma completo de golpe (doble búfer).
 
 **Piezas auxiliares:**
@@ -234,10 +229,9 @@ conexiones, zonas, drones, efectos, etiquetas, HUD y tarjeta. Al final,
 | Dron elevado con sombra sobre la conexión durante dos turnos | Coste 2 de `restricted` y *"MUST reach its destination during the next turn"* (VII.3) |
 | Flujo de luz sobre la conexión en el sentido del viaje | Qué conexión ocupa cada dron (`max_link_capacity`) |
 | Anillo ámbar giratorio, estrella dorada, cruz roja; conexiones a trazos hacia `restricted` | Tipos de zona (VI) sin leer el fichero |
-| Línea de `stdout` del turno en la barra inferior | La salida exacta del subject (VII.5) |
 | Anillo rosa "WHCA\* REPLAN" | Cuándo recalcula el algoritmo ("are you recalculating or caching paths?", VII.1) |
-| Anillo de entregados, AIRBORNE, ON GROUND | Progreso de la partida |
-| Tarjeta final: turnos, estrellas (entregados, sin violaciones, dentro del PAR) y métricas | Métricas secundarias y benchmark (VII.6, VII.7) |
+| Número de entregados sobre `end_hub` | Progreso de la partida |
+| Tarjeta final: turnos y métricas de los movimientos ejecutados | Métricas secundarias y benchmark (VII.6, VII.7) |
 
 ### 3.5 `event_log.py` — `EventLog`
 
@@ -271,27 +265,18 @@ palabra da un tono derivado de su SHA-256 (estable entre ejecuciones).
 usa igual que la terminal, y además aclara los colores muy oscuros
 (`PygameView._visible`) para que se vean sobre el fondo.
 
-**`Palette.drone_color(id)`** reparte tonos con el ángulo áureo: dos drones
-consecutivos nunca se parecen.
+**`Palette.drone_color(id)`**: D1 a D7 usan la paleta Okabe-Ito (pensada
+para daltonismo); desde D8, tonos separados por el ángulo áureo. Es la misma
+función en la ventana y en el log, así que cada dron tiene un solo color
+(`test_each_drone_has_one_color_in_the_log`).
 
 **`Painter`** es el **único** sitio que escribe códigos ANSI en la terminal:
 
-- Desactivado (sin terminal, `--no-color` o `NO_COLOR`): texto tal cual.
-  `test_no_color_emits_no_ansi` recorre todos los mapas.
+- Desactivado (sin terminal o con `NO_COLOR`): texto tal cual
+  (`test_log_without_color_has_no_ansi`).
 - Con `COLORTERM=truecolor`, RGB de 24 bits; si no, el más cercano de los 16
   colores estándar.
 - Siempre cierra con `RESET`: el color nunca se queda pegado al prompt.
-
-### 3.7 `terminal_view.py` y `canvas.py` — el HUD
-
-`TerminalRenderer` dibuja en la terminal mientras se simula
-([10.10](./07-diagramas.md#1010-el-hud-de-terminal)): pantalla de inicio, un
-fotograma por turno (cabecera, mapa, progreso, paneles de zonas y eventos) y
-pantalla final. Es un **context manager** que oculta el cursor y lo devuelve
-siempre (`test_cursor_is_restored_when_the_simulation_fails`). `Canvas.line`
-traza las conexiones con **Bresenham**, y las zonas se distinguen también sin
-color: `( )` normal, `< >` priority, `[ ]` restricted, `▓▓▓` blocked, `{ }`
-hubs.
 
 ---
 
@@ -334,14 +319,11 @@ make run MAP=maps/oficial_maps/medium/02_circular_loop.txt
 make run MAP=maps/oficial_maps/challenger/01_the_impossible_dream.txt ARGS="-d 0.3"
 #   → 25 drones, rainbow, zonas black aclaradas, replans visibles
 
-make hud MAP=maps/oficial_maps/hard/02_capacity_hell.txt
-#   → el HUD de terminal (se sale con Ctrl+C: el cursor vuelve)
-
 make run MAP=maps/oficial_maps/easy/02_simple_fork.txt > out.txt
 cat out.txt; wc -l out.txt
 #   → stdout limpio: solo líneas de turno, ni rastro del saludo de pygame
 
-python -m fly_in.main maps/valid/bottleneck.txt --view log --no-color
+NO_COLOR=1 python -m fly_in.main maps/valid/bottleneck.txt --view log
 #   → texto plano sin un solo código ANSI
 
 DISPLAY= WAYLAND_DISPLAY= python -m fly_in.main maps/valid/linear.txt
@@ -349,8 +331,8 @@ DISPLAY= WAYLAND_DISPLAY= python -m fly_in.main maps/valid/linear.txt
 ```
 
 Qué enseñar en la ventana: pulsa `SPACE` para pausar en un turno con una
-zona llena, señala los puntos de capacidad en rojo, compara la línea
-inferior con el bloque de la terminal, cierra la ventana con `ESC` a mitad y
+zona llena, señala los puntos de capacidad en rojo, compara la cabecera
+del turno en la terminal (la línea de `stdout`) con lo que se mueve, cierra la ventana con `ESC` a mitad y
 enseña que la terminal sigue.
 
 ---
@@ -361,17 +343,18 @@ enseña que la terminal sigue.
 |---|---|
 | `-q` gana; `auto` sin terminal o sin pantalla da `log` | `test_quiet_wins_over_everything`, `test_auto_never_opens_a_window_without_a_terminal`, `test_auto_opens_a_window_only_with_a_display` |
 | El log cuenta bien cuellos de botella y tránsitos | `test_log_tells_the_bottleneck_story`, `test_log_narrates_the_restricted_transit` |
-| Sin color no hay ANSI (log y HUD, todos los mapas) | `test_log_without_color_has_no_ansi`, `test_no_color_emits_no_ansi` |
+| Sin color no hay ANSI | `test_log_without_color_has_no_ansi` |
+| Cada dron, un solo color (log y ventana) | `test_each_drone_has_one_color_in_the_log` |
 | La escena coloca bien a cada dron y cuenta bien | `test_scene_puts_airborne_drones_on_the_middle_of_the_link`, `test_scene_gives_every_drone_its_own_slot_in_a_crowd`, `test_scene_knows_which_links_each_turn_uses`, `test_scene_counts_deliveries_and_replans` |
 | La ventana dibuja todos los turnos de todos los mapas sin fallar | `test_window_draws_every_turn_of_every_map` (19 mapas) |
 | Ventana y log avanzan juntos | `test_window_session_plays_in_sync_with_the_log` |
 | Cerrar la ventana no para la partida | `test_closing_the_window_keeps_the_terminal_going`, `test_quit_event_closes_the_window_at_once` |
+| `SPACE` pausa y reanuda | `test_space_pauses_and_resumes_the_animation` |
 | La tarjeta final no espera para siempre | `test_end_card_waits_for_a_key_not_forever` |
 | pygame se cierra al salir del `with` | `test_window_is_a_context_manager_that_quits_pygame` |
 | Sin ventana o sin pygame, sigue en la terminal | `test_no_window_means_terminal_only`, `test_missing_pygame_means_terminal_only` |
 | pygame no escribe en `stdout` | `test_pygame_never_writes_to_stdout` |
 | Cualquier nombre de color vale | `test_any_color_name_resolves` |
-| El cursor vuelve aunque la simulación falle | `test_cursor_is_restored_when_the_simulation_fails` |
 | `stdout` limpio con visualización | `test_stdout_holds_only_turn_lines_even_with_visuals` |
 | `stderr` cerrado no provoca un error de Python | `test_closed_stderr_ends_cleanly` |
 

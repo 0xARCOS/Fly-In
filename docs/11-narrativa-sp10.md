@@ -2,20 +2,15 @@
 
 Continúa [`10-narrativa-sp09.md`](./10-narrativa-sp09.md). Con SP09 el
 programa ya es **correcto**: resuelve el mapa y lo dice en el formato exacto.
-Este documento cuenta cómo se volvió **visible**: un HUD animado en la
-terminal, con aire de videojuego, y una ventana gráfica con pygame. No es
-decoración: el subject la exige.
+Este documento cuenta cómo se volvió **visible**: una ventana pygame con el
+mapa y los drones, y un log de eventos a color en la terminal, avanzando turno
+a turno a la vez. No es decoración: el subject la exige.
 
 > **Estado.** Implementado en [`fly_in/visualization/`](../fly_in/visualization/)
 > y cubierto por [`test/test_visualization.py`](../test/test_visualization.py) y
 > [`test/test_session.py`](../test/test_session.py). La guía de pasos es
-> [`SP10-visualizacion.md`](./build/SP10-visualizacion.md). Las capturas de
-> este documento son salidas reales del programa.
->
-> Las secciones 2 a 10 cuentan la primera versión: el HUD en la terminal,
-> que sigue disponible como `make hud` (`--view hud`). La sección 11 cuenta
-> la que usa hoy `make run`: la partida en una ventana pygame y el log de
-> eventos en la terminal, avanzando a la vez.
+> [`SP10-visualizacion.md`](./build/SP10-visualizacion.md). Las capturas son
+> salidas reales del programa.
 
 ![La ventana pygame en el challenger, turno 12](./img/window_challenger.png)
 
@@ -33,41 +28,45 @@ pasa turno a turno**.
 Eso descarta la versión fácil, una lista de posiciones por turno. Lo que hay
 que entender en este proyecto son **esperas**: por qué D3 no sale todavía, por
 qué D2 da un rodeo, por qué D5 pasa dos turnos en el aire. Y las esperas solo
-se explican enseñando **capacidades**: `narrow [1/1 FULL]` explica una espera;
-`narrow: D3` no explica nada.
+se explican enseñando **capacidades**: `narrow is FULL (1/1)` explica una
+espera; `narrow: D3` no explica nada.
 
 Hay además tres restricciones que no se pueden romper:
 
-- **`stdout` es de SP09.** Todo lo visual va a `stderr`.
-- **Cero dependencias.** `dependencies = []` en `pyproject.toml`: nada que
-  instalar, nada que pueda faltar en la máquina del evaluador.
+- **`stdout` es de SP09.** Todo lo visual va a `stderr` o a la ventana.
+- **pygame solo dibuja.** Es la única dependencia (`pygame-ce`), no sabe nada
+  de grafos ni de rutas (Cap. V), y el programa funciona sin ella.
 - **Nunca un crash por algo decorativo.** El `color=` del mapa admite
-  *cualquier* palabra (Cap. VI).
+  *cualquier* palabra (Cap. VI), y si no hay ventana posible la partida sigue
+  en la terminal.
 
 ---
 
-## 2. Dos pantallas, un observador
+## 2. Simular primero, enseñar después
 
-El simulador no sabe que existe una pantalla. En SP10 ganó un único punto de
+El simulador no sabe que existe una pantalla. Tiene un único punto de
 enganche: `run(observer)`, que tras aplicar cada turno llama a
 `observer.on_turn(turn, moves, drones)`. Cualquier objeto con ese método es un
-observador (un `Protocol`, igual que `DroneLike` en SP07), y hay dos:
+observador: `SimulationObserver` es un `Protocol`, igual que `DroneLike` en
+SP07.
 
-| Observador | Qué hace en cada turno |
-|---|---|
-| `TerminalRenderer` | Dibuja un fotograma en `stderr` y espera `--delay` segundos |
-| `ReplayRecorder` | Anota dónde está cada dron, para la ventana y el log |
+El observador que usa `FlyIn.run` es `ReplayRecorder`: anota dónde está cada
+dron y la línea de `stdout` de cada turno. La simulación del challenger tarda
+0,25 s; enseñarla, bastante más. Así que primero se simula entero y después se
+**enseña** lo grabado con `Session.play`. Grabar primero tiene otra ventaja:
+para animar un dron *entre* dos turnos hay que saber de dónde sale y adónde
+llega.
 
-`ObserverGroup` reparte cada turno entre los dos cuando se piden ambos. Y como
-la animación duerme entre fotogramas, el simulador **descuenta el tiempo que
-pasa dentro del observador** al medir su tiempo de cálculo: los 247 ms del
-challenger son cálculo, no animación.
+`ObserverGroup` reparte cada turno entre varios observadores. Hoy no lo usa
+nadie en el programa: es el enganche que necesita el `--capacity-info` del
+live coding para sumar un segundo observador sin tocar el simulador. Y el
+simulador **descuenta el tiempo que pasa dentro de los observadores** al medir
+su tiempo de cálculo: los 247 ms del challenger son cálculo.
 
-La regla de la guía, *el renderer no calcula nada*, se cumple así: lee
-`drone.current_zone`, `drone.in_transit` y los `Move`, y cuenta ocupantes para
-pintarlos. No decide nada ni vuelve a deducir rutas. Si algún día la pantalla y
-la salida no coincidieran, el fallo estaría en el simulador, no en dos lógicas
-que se han separado.
+La regla de la guía, *la visualización no calcula nada*, se cumple así: la
+ventana y el log leen la grabación y no deciden nada. Si la pantalla y la
+salida no coincidieran, el fallo estaría en el simulador, porque no hay dos
+lógicas que puedan separarse.
 
 ---
 
@@ -79,261 +78,82 @@ tres niveles:
 1. **Nombres conocidos** (una tabla de ~30: `red`, `crimson`, `gold`,
    `turquoise`…) y `#rrggbb`.
 2. **`rainbow`**, que aparece en el challenger: un tono que **gira con cada
-   fotograma**. La zona arcoíris cambia de color mientras la simulación avanza.
+   fotograma**.
 3. **Cualquier otra cosa** (`turquesa`, `x`, `unicornio`): un tono vivo
    derivado del hash SHA-256 del nombre. Es estable (la misma palabra da
    siempre el mismo color, en todas las ejecuciones) y nunca falla.
 
-Los códigos de escape los escribe **un único objeto**, `Painter`, que cierra
-siempre con `RESET` (el color nunca se queda pegado al prompt). Si la terminal
-anuncia truecolor (`COLORTERM=truecolor`) usa RGB de 24 bits; si no, busca el
-más cercano de los 16 colores estándar. Con el color desactivado devuelve el
-texto tal cual: el resto del código no necesita saber si hay color.
+Los códigos de escape de la terminal los escribe **un único objeto**,
+`Painter`, que cierra siempre con `RESET` (el color nunca se queda pegado al
+prompt). Si la terminal anuncia truecolor (`COLORTERM=truecolor`) usa RGB de
+24 bits; si no, busca el más cercano de los 16 colores estándar. Con el color
+desactivado devuelve el texto tal cual: el resto del código no necesita saber
+si hay color.
 
-Los drones también tienen color propio: `Palette.drone_color(id)` reparte tonos con el
-ángulo áureo (0,618 vueltas entre un id y el siguiente), así que dos drones
-consecutivos nunca se parecen.
-
----
-
-## 4. El mapa en la terminal
-
-`MapLayout` coloca cada zona según sus **coordenadas del archivo**: la `x`
-crece a la derecha y la `y` hacia arriba, como en un plano (en pantalla las
-filas crecen hacia abajo, así que se invierte). La escala horizontal se ajusta
-al ancho de la terminal; la vertical es de 3 filas por unidad, lo justo para
-que quepa una etiqueta debajo de cada zona.
-
-`Canvas` es una rejilla de celdas (carácter + color + negrita). Las conexiones
-se trazan con Bresenham, eligiendo en cada paso `─`, `│`, `╱` o `╲` según la
-dirección del paso. El orden de dibujo es deliberado:
-
-1. **Conexiones**, en azul apagado; las usadas este turno, del color del dron
-   que las usa.
-2. **Drones en el aire**, como `◆` en el punto medio de su conexión.
-3. **Zonas**, encima de todo: nunca las tapa un marcador.
-4. **Etiquetas**, primero las de los hubs (son las que más importa leer) y
-   después las demás, solo donde caben sin pisar nada. Si no caben enteras, se
-   recortan con `…`.
-
-Cada zona ocupa tres columnas y **su forma dice su tipo**, para que se lea
-también sin color:
-
-| Forma | Tipo | Centro |
-|---|---|---|
-| `( )` | normal | `·` vacía · `●` un dron (de su color) · `2`…`9`, `+` |
-| `< >` | priority | igual |
-| `[ ]` | restricted | igual |
-| `▓▓▓` | blocked | — |
-| `{ }` | start / end hub | igual |
-
-Una zona **llena** pinta sus corchetes en rojo: el cuello de botella se ve sin
-leer ningún número.
+Los drones también tienen color propio, con `Palette.drone_color(id)`: D1 a
+D7 toman la paleta Okabe-Ito (pensada para que se distinga con daltonismo), y
+a partir de D8 los tonos avanzan 0,618 vueltas (el ángulo áureo) de un id al
+siguiente, así que dos drones consecutivos nunca se parecen. El mismo dron
+tiene el mismo color en la ventana, en la leyenda del log y en cada línea del
+log (`test_each_drone_has_one_color_in_the_log`).
 
 ---
 
-## 5. El HUD, pieza a pieza
+## 4. El log de eventos en la terminal
 
-Así se ve el turno 5 de `medium/02_circular_loop.txt` (sin color):
+`EventLog` escribe en `stderr` un bloque por turno. Es lo que se ve siempre,
+con ventana o sin ella. Así queda `maps/valid/bottleneck.txt` (sin color):
 
 ```
- ▌FLY-IN▐  02_circular_loop.txt                          TURN 005 / PAR 15  ·  W 8
- OUTPUT ▸ D1-goal D2-loop_b-exit_point D4-loop_b D6-loop_a
+ ▌FLY-IN▐  MISSION LOG ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  MAP     bottleneck.txt
+  SQUAD   3 drones · 3 zones · 2 links
+  ENGINE  WHCA* · window 8
+  VIEW    terminal log
+  DRONES: D1 D2 D3
 
-             (·)───────(·)
-              │         │
-              │         │
-   {·}───────(2)───────(2)───◆───[·]───────{●}
-  start    loop_a    loop_b   exit_poi…   goal
+ ── T01 ────────────────────────────────────────────────────────── ▸ D1-narrow
+   ⟳ replan · 3 drones planned · 0 kept in flight · 0.3 ms
+   D1   → narrow
+   ·    holding at start: D2 D3
+   ⚠    narrow is FULL (1/1)
+ ── T02 ────────────────────────────────────────────────── ▸ D1-goal D2-narrow
+   D1   ★ DELIVERED to goal  ████░░░░░░░░ 1/3
+   D2   → narrow
+   ·    holding at start: D3
+ ── T03 ────────────────────────────────────────────────── ▸ D2-goal D3-narrow
+   D2   ★ DELIVERED to goal  ████████░░░░ 2/3
+   D3   → narrow
+ ── T04 ──────────────────────────────────────────────────────────── ▸ D3-goal
+   D3   ★ DELIVERED to goal  ████████████ 3/3
 
- DELIVERED █████░░░░░░░░░░░░░░░░░░░░░░░ 1/6   AIRBORNE 1   ON GROUND 4
-
- ┌ ZONES ──────────────────────────────────┐ ┌ EVENTS ──────────────────────────────────┐
- │ loop_a ■■ 2/2 FULL                      │ │ D1 ★ DELIVERED to goal                   │
- │ loop_b ■■ 2/2 FULL                      │ │ D2 ◆ takes off → exit_point (2 turns)    │
- │ goal     1 ∞ hub                        │ │ D4 → loop_b                              │
- │                                         │ │ D6 → loop_a                              │
- │                                         │ │ D1 ◆ lands on exit_point                 │
- │                                         │ │ D1 ◆ takes off → exit_point (2 turns)    │
- │                                         │ │ D3 → loop_b                              │
- └─────────────────────────────────────────┘ └──────────────────────────────────────────┘
+═════════════════════════ MISSION COMPLETE · 4 TURNS ═════════════════════════
+  moves 6 · moves/turn 1.50 · avg delivery T3.0 · waits 3 · peak airborne 0
+  compute 0 ms · 1 replan · 3/3 delivered · capacities verified every turn
 ```
 
-Y cada elemento está ahí porque responde a una pregunta:
+Cada elemento responde a una pregunta:
 
 | Elemento | La pregunta que responde |
 |---|---|
-| **Barra superior**: mapa, turno, PAR, `W` | ¿Dónde estoy y cuánto llevo? En los mapas oficiales, **PAR** es el objetivo del subject |
-| **`OUTPUT ▸`** | ¿Qué línea de `stdout` corresponde a esto? Une lo que se ve con lo que se entrega |
-| **Mapa** | ¿Dónde está cada dron y por dónde puede ir? |
-| **`◆` sobre una conexión** | ¿Quién está en el aire? Esos no ocupan zona |
-| **`DELIVERED` / `AIRBORNE` / `ON GROUND`** | ¿Cuánto falta? La barra da sensación de progreso |
-| **ZONES**: ocupación frente a capacidad, `FULL` en rojo | **¿Por qué espera alguien?** Es la pregunta clave del proyecto |
-| **EVENTS**: despegues, aterrizajes, entregas; los antiguos, atenuados | ¿Qué acaba de pasar? |
+| Cabecera: mapa, drones, zonas, conexiones, ventana `W`, vista | ¿Qué estoy mirando? |
+| Leyenda `DRONES:` con el color de cada uno | ¿Quién es quién? |
+| `── T02 ── ▸ D1-goal D2-narrow` | ¿Qué línea de `stdout` corresponde a este turno? Une lo que se ve con lo que se entrega |
+| `⟳ replan` con drones planificados, en el aire y milisegundos | ¿Cuándo recalcula el algoritmo y cuánto le cuesta? |
+| `→`, `◆ takes off`, `◆ lands on`, `★ DELIVERED` con barra | ¿Qué acaba de hacer cada dron? |
+| `holding at start: D2 D3` | ¿Quién espera, y dónde? |
+| `⚠ narrow is FULL (1/1)` | **¿Por qué espera?** Sale solo el turno en que la zona se llena |
+| `MISSION COMPLETE` y las métricas | ¿Cómo ha ido? |
 
-En la captura se lee la historia entera del mapa sin saber nada del código:
-`loop_a` y `loop_b` están llenas, D2 acaba de despegar hacia `exit_point` y
-tardará dos turnos, D1 ya ha entregado, y el resto hace cola. Es exactamente
-la explicación de los 15 turnos de la sección 6.3 de la narrativa de SP08.
-
-Antes del primer turno hay una **pantalla de inicio**, con el logo en
-degradado, el nombre del mapa, sus cifras y el PAR:
-
-```
-  ███████╗██╗  ██╗   ██╗      ██╗███╗   ██╗
-  ██╔════╝██║  ╚██╗ ██╔╝      ██║████╗  ██║
-  █████╗  ██║   ╚████╔╝ █████╗██║██╔██╗ ██║
-  ██╔══╝  ██║    ╚██╔╝  ╚════╝██║██║╚██╗██║
-  ██║     ███████╗██║         ██║██║ ╚████║
-  ╚═╝     ╚══════╝╚═╝         ╚═╝╚═╝  ╚═══╝
-
-  DRONE SWARM ROUTING SIMULATOR  ·  cooperative space-time A*
-
-  MAP  02_circular_loop.txt
-  INFO 7 zones · 7 links · 6 drones · WHCA* W=8
-  PAR  15 turns
-
-  ▶ LAUNCHING 6 DRONES …
-```
-
-Y al final, bajo el último fotograma, la **pantalla de misión completada**
-(verde si se cumple el PAR, ámbar si no):
-
-```
-  ╔══════════════════════════════════════════════════╗
-  ║   ★  MISSION COMPLETE  ★   15 TURNS   PAR 15 ✔   ║
-  ╚══════════════════════════════════════════════════╝
-  moves 30 · moves/turn 2.00 · avg delivery turn 10.0 · waits 30 · peak airborne 1 · 5 ms
-  ✔ 6/6 drones delivered   ✔ capacities verified every turn
-```
-
-La segunda comprobación no es un adorno: `_verify` (SP08) recuenta zonas y
-conexiones en **cada** turno, y si algo no cuadrara la simulación se habría
-detenido antes de llegar a esta pantalla.
+La última línea, *capacities verified every turn*, no es un adorno: `_verify`
+(SP08) recuenta zonas y conexiones en **cada** turno, y si algo no cuadrara la
+simulación se habría detenido antes.
 
 ---
 
-## 6. Tres modos, según dónde mires
+## 5. La ventana pygame
 
-| Situación | Modo | Qué se ve |
-|---|---|---|
-| `stderr` es una terminal | **En vivo** | Inicio, un fotograma por turno (borrando la pantalla), final |
-| `stderr` va a un fichero o una tubería | **Registro** | Una cabecera y el resumen final, en texto plano |
-| `-q` / `--quiet` | **Nada** | Solo las líneas de `stdout` |
-
-El color se apaga con `--no-color`, con la variable `NO_COLOR` (una
-convención muy extendida) y siempre que `stderr` no sea una terminal: los
-códigos ANSI en un fichero son basura ilegible.
-
-Durante la animación el cursor se oculta, y se devuelve en el `__exit__` de un
-gestor de contexto: **también si la simulación falla o se pulsa Ctrl+C**. Hay
-un test que fuerza un `SimulationError` en mitad de la animación y comprueba
-que lo último que se escribe es el código que devuelve el cursor.
-
-`--delay` fija los segundos por fotograma (0,4 por defecto; 0 para verlo de
-golpe).
-
----
-
-## 7. La repetición HTML (retirada)
-
-La primera versión escribía también una repetición en un fichero HTML
-(`--html`), y la segunda llevó esa animación al navegador en vivo. Las dos se
-retiraron de la entrega: eran JavaScript, no Python, y no se podían defender
-línea a línea en la evaluación. Su sitio lo ocupa la ventana pygame de la
-[sección 11](#11-versión-final-la-ventana-pygame-y-el-log-en-la-terminal),
-que conserva lo que funcionaba de ellas: la interpolación entre turnos, el
-reparto en corona alrededor de las zonas, los drones en el aire a mitad de su
-conexión, las conexiones iluminadas y la tarjeta final.
-
----
-
-## 8. Lo que costó ajustar
-
-Las primeras versiones funcionaban, pero no se leían bien:
-
-- **El challenger a 80 columnas.** 24 unidades de ancho en 80 columnas dejan
-  3 columnas por unidad: las zonas se tocan. Los nombres de los hubs salían
-  recortados (`st…`, `im…`) porque las etiquetas de los vecinos ocupaban antes
-  el hueco. Solución: los hubs se etiquetan primero y prueban tres
-  alineaciones; los drones en el aire se dibujan antes que las zonas, para que
-  nunca tapen un corchete.
-- **El panel ZONES** cortaba `conv_restricted8` a `conv_restric`, y había
-  tres iguales. Ahora el ancho del nombre se calcula con el espacio real del
-  panel.
-
----
-
-## 9. Cómo sabemos que funciona
-
-La calidad visual se juzga a ojo, y eso se hizo con capturas reales de cada
-vista. Los tests comprueban lo que no debe fallar **nunca**:
-
-- `--no-color` no emite ni un código ANSI, en los 19 mapas.
-- Cualquier `color=` se resuelve (`turquesa`, `#ff8800`, `rainbow`, `x`), y
-  `rainbow` cambia con el fotograma.
-- `Painter` siempre cierra con `RESET`; sin truecolor usa los 16 colores.
-- Todas las zonas de los 19 mapas caen dentro del lienzo, y la orientación
-  (x a la derecha, y hacia arriba) se respeta.
-- El cursor se oculta una vez y se devuelve, también cuando la simulación
-  falla.
-- El fotograma contiene lo que importa (`1/1 FULL`, `DELIVERED`, la línea de
-  `OUTPUT`, `PAR 10 ✔`), y un tránsito aparece como `◆ takes off`.
-- El modo registro son cuatro líneas en texto plano.
-- La grabación tiene un fotograma por turno más el inicial, con las
-  posiciones correctas (tierra, aire, entregado).
-- En la CLI, `stdout` sigue conteniendo solo las líneas de turno con la
-  visualización activa.
-
----
-
-## 10. Lo que este diseño no garantiza
-
-- **Terminales estrechas.** Por debajo de ~80 columnas el mapa del
-  challenger se comprime hasta que las zonas se tocan. La información sigue en
-  los paneles, pero el mapa pierde legibilidad.
-- **Anchura de algunos símbolos.** `★` y `◆` son de anchura "ambigua" en
-  Unicode: en terminales configuradas para CJK ocupan dos columnas y
-  desalinean los recuadros.
-
----
-
-## 11. Versión final: la ventana pygame y el log en la terminal
-
-### 11.1 De dónde viene
-
-La visualización pasó por tres versiones:
-
-1. **HUD de terminal + repetición HTML aparte** (secciones 2 a 10). El HUD
-   sigue disponible como `make hud`.
-2. **La animación en el navegador, en vivo**, con un servidor local que le
-   enviaba cada turno. Se veía muy bien, pero eran unas 750 líneas de
-   JavaScript, un servidor HTTP y varios hilos: código que no es Python y que
-   no se podía defender en una corrección de Python con garantías.
-3. **La versión final: una ventana pygame**, en el mismo proceso y el mismo
-   hilo, con el log de eventos en la terminal. Todo el código entregado es
-   Python.
-
-La regla que decidió el cambio: *todo lo que se entrega tiene que poder
-explicarse línea a línea*. La versión del navegador se conserva fuera del
-repositorio, como pieza de presentación.
-
-### 11.2 Simular primero, enseñar después
-
-La simulación del challenger tarda 0,25 s; enseñarla, bastante más. Así que
-primero se simula entero, con `ReplayRecorder` como observador (guarda dónde
-está cada dron y la línea de `stdout` de cada turno), y después se **enseña**
-lo grabado. `Session._play_log` recorre los turnos y en cada uno hace dos
-cosas seguidas: escribe en la terminal el bloque del turno `k` y le pide a la
-ventana que anime el turno `k` durante `--delay` segundos
-(`PygameView.play_turn`). Como las dos cosas las hace el mismo bucle, van a la
-par sin ninguna sincronización.
-
-Grabar primero tiene otra ventaja: para animar un dron *entre* dos turnos hay
-que saber de dónde sale y adónde llega, y la tarjeta final y la barra de
-progreso necesitan saber cuántos turnos hay.
-
-### 11.3 La escena: calcular una vez, dibujar muchas
+### 5.1 La escena: calcular una vez, dibujar muchas
 
 La ventana dibuja 60 fotogramas por segundo. Todo lo que depende solo de la
 simulación se calcula **una vez** en `Scene` (`scene.py`):
@@ -347,18 +167,20 @@ simulación se calcula **una vez** en `Scene` (`scene.py`):
 
 `scene.py` no importa pygame: se prueba sin pantalla.
 
-### 11.4 El dibujo
+### 5.2 El dibujo
 
 `PygameView` dibuja cada fotograma por capas: fondo (un degradado radial y una
 rejilla, precalculados), estrellas que titilan, conexiones, zonas, drones,
-efectos, etiquetas, el HUD y, si toca, una tarjeta. Todo con primitivas de
-`pygame.draw`; no hay imágenes.
+efectos, etiquetas y, si toca, una tarjeta. Todo con primitivas de
+`pygame.draw`; no hay imágenes. La ventana abre a 1280 × 800 (o al 92 % × 88 %
+de la pantalla si es más pequeña).
 
 - **Zonas** hexagonales con un halo de su color. La decoración cuenta el
   tipo: anillo ámbar a trazos que gira en las `restricted`, estrella dorada en
   las `priority`, cruz roja en las `blocked`, plataformas con una baliza que
-  late en los hubs. Encima, **puntos de capacidad** que se llenan; la zona
-  entera late en rojo al llenarse.
+  late en los hubs; el número del hub es cuántos drones tiene (en `end_hub`,
+  los entregados). Encima de cada zona, **puntos de capacidad** que se llenan;
+  la zona entera late en rojo al llenarse.
 - **Drones** con forma de cuadricóptero, hélices que giran y estela. El que va
   hacia una `restricted` **se eleva**, proyecta una sombra y se queda sobre su
   conexión los dos turnos de vuelo.
@@ -366,12 +188,12 @@ efectos, etiquetas, el HUD y, si toca, una tarjeta. Todo con primitivas de
   color del dron que las usa; las que llevan a una `restricted`, a trazos.
 - **Efectos**: chispas y un "+1" en cada entrega, y un anillo rosa ("WHCA\*
   REPLAN") en cada replanificación.
-- **HUD**: misión y PAR, el turno en grande, el anillo de entregados con los
-  contadores, y la línea exacta de `stdout` del turno con la barra de
-  progreso.
 - **Tarjetas**: el *mission briefing* con la cuenta atrás 3-2-1-GO (la
-  terminal cuenta a la vez) y la final, con los turnos, tres estrellas
-  (entregados, sin violaciones, dentro del PAR) y las métricas.
+  terminal cuenta a la vez) y la final, con los turnos y las métricas de los
+  movimientos ejecutados.
+
+La ventana no repite el turno ni la línea de `stdout`: esa información está en
+el log, justo al lado, turno a turno.
 
 ![medium/02, turno 5: loop_a y loop_b llenas y D2 en el aire](./img/window_medium.png)
 
@@ -381,7 +203,66 @@ dibujados (lo más caro de pygame) y `Scene` ya tiene los fotogramas.
 
 ![La tarjeta final](./img/window_complete.png)
 
-### 11.5 Lo que salió al probarlo
+### 5.3 Terminal y ventana a la par
+
+`Session._play_log` recorre los turnos y en cada uno hace dos cosas seguidas:
+escribe en la terminal el bloque del turno `k` y le pide a la ventana que anime
+el turno `k` durante `--delay` segundos (`PygameView.play_turn`). Como las dos
+cosas las hace el mismo bucle, en un solo hilo, van a la par sin ninguna
+sincronización.
+
+En la ventana, `SPACE` pausa y reanuda la animación (y con ella el log, que
+espera a la ventana), y `ESC`, `Q` o cerrar la ventana la quitan en el acto;
+la terminal sigue sola hasta el final.
+
+---
+
+## 6. Qué vista se ve
+
+| Situación | Vista | Qué se ve |
+|---|---|---|
+| `stderr` es una terminal y hay pantalla gráfica | `window` | Ventana + log, turno a turno a la vez (0,8 s por turno) |
+| Sin pantalla gráfica, o `stderr` va a un fichero o una tubería | `log` | Solo el log (0,25 s por turno; sin pausas si no hay terminal) |
+| `--view window` o `--view log` | la pedida | Se fuerza una de las dos |
+| `-q` / `--quiet` | ninguna | Solo las líneas de `stdout` |
+
+`--delay` fija los segundos por turno (0 para verlo de golpe). El color se
+apaga con la variable `NO_COLOR` (una convención muy extendida) y siempre que
+`stderr` no sea una terminal: los códigos ANSI en un fichero son basura
+ilegible.
+
+Nunca se queda esperando:
+
+- `--view auto` solo abre la ventana con **terminal y pantalla gráfica**
+  (`DISPLAY`/`WAYLAND_DISPLAY` en Linux). Con una tubería, en CI o en los
+  tests, la vista es el log.
+- Si pygame no está instalado o no puede abrir la ventana, se avisa y la
+  partida sigue en la terminal.
+- La tarjeta final espera una tecla, pero como mucho 20 s (`END_HOLD`), y con
+  `--delay 0` no espera.
+
+---
+
+## 7. De dónde viene
+
+La visualización pasó por cuatro versiones antes de esta:
+
+1. Un **HUD en la terminal**: el mapa dibujado con caracteres y paneles de
+   zonas y eventos, a pantalla completa.
+2. Una **repetición en HTML** escrita en un fichero.
+3. La **animación en el navegador, en vivo**, con un servidor local: unas 750
+   líneas de JavaScript, un servidor HTTP y varios hilos.
+4. **Ventana pygame + HUD**, con navegación por turnos.
+
+Se quedó lo que se puede defender línea a línea en Python y lo que pide la
+hoja de evaluación (*"colored terminal output and/or graphical interface"*):
+la ventana y el log. El HUD, el HTML, el navegador y la navegación por turnos
+se retiraron; la navegación, además, no llegó a funcionar: las teclas
+guardaban el turno pedido, pero nada lo leía.
+
+---
+
+## 8. Lo que salió al probarlo
 
 - **El saludo de pygame.** Al importarse, pygame escribe una línea por
   **`stdout`**. Habría sido la primera línea de la salida del programa, y la
@@ -396,44 +277,65 @@ dibujados (lo más caro de pygame) y `Scene` ya tiene los fotogramas.
 - **Revisión con capturas reales** (pygame dibuja en memoria con el driver
   `dummy` de SDL): las hélices de los drones pequeños parecían rayones (ahora
   son anillos con una pala que gira), las etiquetas del challenger se pegaban
-  unas a otras (ahora dejan un margen), el halo detrás de los números grandes
-  dejaba anillos visibles (se quitó) y la etiqueta START de hard/02 quedaba
-  bajo el panel inferior (más margen abajo).
+  unas a otras (ahora dejan un margen) y el halo detrás de los números grandes
+  dejaba anillos visibles (se quitó).
 
-### 11.6 Nunca quedarse esperando
+---
 
-- `--view auto` solo abre la ventana con **terminal y pantalla gráfica**
-  (`DISPLAY`/`WAYLAND_DISPLAY` en Linux). Con una tubería, en CI o en los
-  tests, la vista es el log.
-- Si pygame no está instalado o no puede abrir la ventana, se avisa y la
-  partida sigue en la terminal.
-- Si el usuario cierra la ventana (o pulsa `ESC`), desaparece en el acto y la
-  terminal sigue sola.
-- La tarjeta final espera una tecla, pero como mucho 20 s.
+## 9. Cómo se prueba
 
-### 11.7 Cómo se prueba
+`test/test_visualization.py`:
 
-`test/test_session.py` cubre la elección de vista, el log turno a turno, la
-escena (sin pygame) y la ventana de verdad con el driver `dummy`: que dibuja
-todos los turnos de los 19 mapas, que avanza a la par que el log, que cerrarla
-no para la partida, que sin pygame o sin ventana se sigue en la terminal, que
-la tarjeta final no espera para siempre, que el `with` cierra pygame y que
-pygame no escribe nada en `stdout`.
+- cualquier `color=` se resuelve (`turquesa`, `#ff8800`, `rainbow`, `x`), y
+  `rainbow` cambia con el fotograma;
+- `Painter` siempre cierra con `RESET`; sin truecolor usa los 16 colores;
+- la grabación tiene un fotograma por turno más el inicial, con las
+  posiciones correctas (tierra, aire, entregado).
 
-## 12. Resumen: quién hace qué
+`test/test_session.py`:
+
+- la elección de vista (`-q` gana; `auto` sin terminal o sin pantalla da
+  `log`);
+- el log cuenta bien los cuellos de botella y los tránsitos, y sin color no
+  lleva ni un código ANSI;
+- cada dron tiene un solo color en todo el log, el mismo que en la ventana;
+- la escena coloca bien a cada dron y cuenta bien, sin pygame;
+- la ventana de verdad, con el driver `dummy`: dibuja todos los turnos de los
+  19 mapas, avanza a la par que el log, `SPACE` pausa y reanuda, cerrarla no
+  para la partida, sin pygame o sin ventana se sigue en la terminal, la
+  tarjeta final no espera para siempre, el `with` cierra pygame y pygame no
+  escribe nada en `stdout`.
+
+En `test/test_cli.py`, `stdout` sigue conteniendo solo las líneas de turno
+con la visualización activa.
+
+---
+
+## 10. Lo que este diseño no garantiza
+
+- **Anchura de algunos símbolos del log.** `★` y `◆` son de anchura "ambigua"
+  en Unicode: en terminales configuradas para CJK ocupan dos columnas y
+  desalinean las cabeceras de turno.
+- **Mapas muy densos en la ventana.** Con muchas zonas juntas el radio de zona
+  baja hasta 9 px y las etiquetas se omiten donde no caben; la información
+  completa sigue en el log.
+
+---
+
+## 11. Resumen: quién hace qué
 
 | Pieza | Responsabilidad |
 |---|---|
 | `Simulator.run(observer)` | Avisar tras cada turno; descontar el tiempo del observador |
 | `ReplayRecorder` | Posiciones y línea de `stdout` de cada turno |
+| `ObserverGroup` | Repartir un turno entre varios observadores (el enganche del live coding) |
 | `Session` | Elegir vista; reproducir la partida en la ventana y en el log a la vez; caer a la terminal si no hay ventana |
 | `Scene` | Los fotogramas precalculados, sin pygame |
-| `PygameView` | La ventana: abrir, animar cada turno, tarjeta final, cerrar (context manager) |
+| `PygameView` | La ventana: abrir, animar cada turno, pausar, tarjeta final, cerrar (context manager) |
 | `Projection` / `Glow` / `Fonts` | Mapa a píxeles; halos precalculados; textos en caché |
 | `EventLog` | El log de eventos de la terminal |
 | `Palette` / `Painter` | Nombre → RGB (tabla, `#hex`, `rainbow`, hash); ANSI con `RESET` siempre, fallback a 16 colores |
-| `MapLayout` / `Canvas` / `TerminalRenderer` | El HUD de terminal: mapa en caracteres, paneles y cursor devuelto siempre |
-| `FlyIn` (`main.py`) | Elegir vista (`--view`), color y ritmo según terminal, pantalla, `--no-color`, `NO_COLOR`, `-q` y `--delay` |
+| `FlyIn` (`main.py`) | Elegir vista (`--view`), color y ritmo según terminal, pantalla, `NO_COLOR`, `-q` y `--delay` |
 
 Continúa en [`12-narrativa-sp11.md`](./12-narrativa-sp11.md): medir, ajustar y
 entregar.

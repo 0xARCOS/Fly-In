@@ -21,7 +21,6 @@ from fly_in.simulation.metrics import Metrics
 from fly_in.simulation.simulator import Move, Replan
 from fly_in.visualization.event_log import EventLog
 from fly_in.visualization.palette import UI_TEXT, UI_TITLE, UI_WARN, Painter
-from fly_in.visualization.playback_controller import PlaybackController
 from fly_in.visualization.recorder import ReplayRecorder
 from fly_in.visualization.scene import Scene
 
@@ -135,9 +134,8 @@ class Session:
         run = self.run
         scene = Scene(run.graph, run.recorder.positions,
                       run.recorder.lines, run.replans)
-        controller = PlaybackController(len(run.trace))
         with PygameView(scene, run.title, run.window,
-                        run.target, controller) as window:
+                        run.target) as window:
             if not window.open():
                 self.log.note("cannot open a window · terminal only",
                               UI_WARN)

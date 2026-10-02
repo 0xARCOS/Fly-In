@@ -40,13 +40,15 @@ def build_parser() -> argparse.ArgumentParser:
 |---|---|---|---|
 | `map_file` | posicional, ruta | — | El mapa a simular |
 | `--window W` / `-w` | entero | 8 | Ventana de WHCA\* ([SP07](./SP07-whca.md)) |
-| `--no-color` | bandera | falso | Desactiva ANSI ([SP10](./SP10-visualizacion.md)) |
 | `--quiet` / `-q` | bandera | falso | Solo el formato de salida, sin visualización |
 | `--metrics` | bandera | falso | Métricas secundarias por `stderr` ([SP11](./SP11-benchmarks-y-readme.md)) |
+| `--view V` | `auto`, `window`, `log` | `auto` | Qué visualización ([SP10](./SP10-visualizacion.md)) |
+| `-d S` / `--delay S` | real ≥ 0 | según la vista | Segundos por turno ([SP10](./SP10-visualizacion.md)) |
 
-Los tres últimos aún no hacen nada. Declararlos ahora te ahorra volver a tocar
-el CLI en cada subproyecto, y `--window` es el que te permitirá comparar
-configuraciones en SP11 sin editar código.
+En SP03, `--window`, `--quiet` y `--metrics` aún no hacían nada. Declararlos
+pronto ahorra volver a tocar el CLI en cada subproyecto, y `--window` es el
+que permite comparar configuraciones en SP11 sin editar código. `--view` y
+`--delay` llegaron con SP10. Son todos los argumentos del programa.
 
 ⚠️ **No lo des por sentado — usa `type=Path`, no `type=str`**
 `argparse` acepta `type=pathlib.Path` y te da un objeto `Path` directamente. Con

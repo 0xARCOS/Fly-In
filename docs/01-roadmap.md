@@ -63,7 +63,7 @@ hacerse en cualquier momento. Solo SP07 las une.
 | [**SP07**](./build/SP07-whca.md) | `WhcaPathfinder`: A\* en espacio-tiempo con ventana | SP05, SP06 | Un dron replica a Dijkstra; dos drones ante un cuello de botella se alternan sin deadlock |
 | [**SP08**](./build/SP08-drone-y-simulador.md) | `Drone`, `DroneState`, `Simulator` con replanificación | SP07, SP03 | Todos los drones llegan; ninguna regla de ocupación se viola en ningún turno; el resultado no depende del orden de la lista |
 | [**SP09**](./build/SP09-formato-salida.md) | `OutputFormatter` | SP08 | La salida coincide carácter a carácter con el formato del Cap. VII.5 |
-| [**SP10**](./build/SP10-visualizacion.md) | `TerminalRenderer` (+ gráfico opcional) | SP09 | Alguien que no ha leído el código entiende qué pasa turno a turno |
+| [**SP10**](./build/SP10-visualizacion.md) | `ReplayRecorder`, `EventLog`, `Scene`, `PygameView`, `Session` (ventana pygame + log de eventos) | SP09 | Alguien que no ha leído el código entiende qué pasa turno a turno |
 | [**SP11**](./build/SP11-benchmarks-y-readme.md) | Medición, ajuste de `W`/prioridad, `README.md` final | SP09, SP10 | Cumples (o justificas) la tabla de benchmarks; un compañero clona y ejecuta sin preguntarte nada |
 
 ---
@@ -77,7 +77,7 @@ columnas) y repetido en una copia limpia del repositorio.
 ```
 fly_in/
 ├── main.py                  # SP03/SP09/SP10 ✅ argumentos, errores limpios,
-│                            #        stdout solo con líneas de turno, HUD,
+│                            #        stdout solo con líneas de turno,
 │                            #        --view, --metrics, --delay
 ├── benchmarks.py            # SP11 ✅ objetivos oficiales + make bench
 ├── models/
@@ -104,15 +104,11 @@ fly_in/
 │   └── formatter.py         # SP09 ✅ OutputFormatter
 └── visualization/
     ├── palette.py           # SP10 ✅ colores (cualquier nombre), ANSI, 16/24 bits
-    ├── canvas.py            # SP10 ✅ el mapa en caracteres, con coordenadas
-    ├── terminal_view.py     # SP10 ✅ HUD animado: inicio, turnos, final
     ├── recorder.py          # SP10 ✅ grabador: posiciones y línea por turno
     ├── scene.py             # SP10 ✅ fotogramas precalculados (sin pygame)
     ├── pygame_view.py       # SP10 ✅ la ventana pygame
     ├── event_log.py         # SP10 ✅ log de eventos de la terminal
     └── session.py           # SP10 ✅ elige la vista; ventana y log a la par
-scripts/
-└── loading.sh               # SP11 ✅ pantallas de carga del Makefile (stderr)
 maps/
 ├── valid/         9 mapas pequeños, uno por comportamiento
 ├── errors/        10 mapas, uno por regla de validación

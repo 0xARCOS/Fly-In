@@ -6,6 +6,7 @@ dibuja en memoria sin necesitar pantalla.
 
 import io
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -19,7 +20,7 @@ from fly_in.parsing.map_parser import MapParser
 from fly_in.simulation.metrics import Metrics
 from fly_in.simulation.simulator import Simulator
 from fly_in.visualization.event_log import EventLog
-from fly_in.visualization.palette import Painter
+from fly_in.visualization.palette import Painter, Palette
 from fly_in.visualization.recorder import ReplayRecorder
 from fly_in.visualization.scene import Scene
 from fly_in.visualization.session import Run, Session
@@ -116,6 +117,14 @@ def test_log_narrates_the_restricted_transit() -> None:
 def test_log_without_color_has_no_ansi() -> None:
     out = run_log("oficial_maps/hard/01_maze_nightmare.txt", color=False)
     assert "\033" not in out
+
+
+def test_each_drone_has_one_color_in_the_log() -> None:
+    out = run_log("valid/bottleneck.txt", color=True)
+    for drone in (1, 2, 3):
+        codes = set(re.findall(rf"\033\[([0-9;]*)mD{drone}(?![-\d])", out))
+        r, g, b = Palette.drone_color(drone)
+        assert codes == {f"1;38;2;{r};{g};{b}"}, (drone, codes)
 
 
 def test_log_holding_list_is_summarised() -> None:
@@ -231,6 +240,22 @@ def test_quit_event_closes_the_window_at_once(
         view.play_turn(1, 5.0)
         assert view.closed and not pygame.get_init()
         view.play_turn(2, 5.0)   # ya cerrada: no hace nada ni falla
+
+
+def test_space_pauses_and_resumes_the_animation(
+    pygame_view: ModuleType,
+) -> None:
+    import pygame
+    scene = scene_of("valid/linear.txt")
+    with pygame_view.PygameView(scene, "m", 8) as view:
+        assert view.open()
+        space = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE)
+        pygame.event.post(space)
+        view._tick()
+        assert view._paused
+        pygame.event.post(space)
+        view._tick()
+        assert not view._paused
 
 
 def test_end_card_waits_for_a_key_not_forever(

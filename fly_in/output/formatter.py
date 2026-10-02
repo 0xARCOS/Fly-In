@@ -7,10 +7,9 @@
 - Orden dentro de la línea: por id de dron ascendente.
 """
 
-from typing import Any, List, Sequence
+from typing import List, Sequence
 
 from fly_in.simulation.simulator import Move
-from fly_in.visualization.palette import Palette
 
 
 class OutputFormatter:
@@ -43,46 +42,4 @@ class OutputFormatter:
         siempre el número de turnos que cuentan.
         """
         lines = (cls.format_turn(moves) for moves in trace)
-        return [line for line in lines if line]
-
-    @staticmethod
-    def format_move_colored(
-        move: Move, paint: Any
-    ) -> str:
-        """Un movimiento coloreado por id de dron.
-
-        Usa Palette para colorear el ID del dron según drone_color.
-        """
-        drone_id_str = f"D{move.drone_id}"
-        target = (
-            move.target.name if move.arrives else move.connection.name
-        )
-        colored_drone = paint(
-            drone_id_str,
-            fg=Palette.drone_color(move.drone_id),
-        )
-        return f"{colored_drone}-{target}"
-
-    @classmethod
-    def format_turn_colored(
-        cls, moves: Sequence[Move], paint: Any
-    ) -> str:
-        """Una línea de turno coloreada, ordenada por id."""
-        ordered = sorted(moves, key=lambda move: move.drone_id)
-        colored_moves = [
-            cls.format_move_colored(move, paint) for move in ordered
-        ]
-        return " ".join(colored_moves)
-
-    @classmethod
-    def format_trace_colored(
-        cls, trace: Sequence[Sequence[Move]], paint: Any
-    ) -> List[str]:
-        """Todas las líneas coloreadas.
-
-        Misma lógica que format_trace, pero cada dron tiene color.
-        """
-        lines = (
-            cls.format_turn_colored(moves, paint) for moves in trace
-        )
         return [line for line in lines if line]

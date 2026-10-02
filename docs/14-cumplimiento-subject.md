@@ -5,14 +5,14 @@ que se cumple: el fichero, el test o el comando que lo demuestra en la
 evaluación. Si alguien pregunta "¿dónde cumples X?", la respuesta está en la
 tabla correspondiente.
 
-Estado en la última revisión (2026-09-30):
+Estado en la última revisión (2026-10-02):
 
 | Comprobación | Resultado |
 |---|---|
 | `flake8 .` | sin avisos |
-| `mypy .` con los flags de `make lint` | `Success: no issues found in 42 source files` |
-| `mypy . --strict` | `Success: no issues found in 42 source files` |
-| `pytest` | 455 tests, todos pasan |
+| `mypy .` con los flags de `make lint` | `Success: no issues found in 40 source files` |
+| `mypy . --strict` | `Success: no issues found in 40 source files` |
+| `pytest` | 411 tests, todos pasan |
 | Funciones o clases sin docstring en `fly_in/` | 0 |
 | Funciones fuera de una clase en `fly_in/` | 0 |
 | Benchmarks oficiales | 10 de 10 dentro del objetivo, y el challenger por debajo de 45 |
@@ -26,8 +26,8 @@ Estado en la última revisión (2026-09-30):
 | Python 3.10 o superior | `requires-python = ">=3.10"` en `pyproject.toml`; `mypy` comprueba contra 3.10 (`python_version = "3.10"`) | `make lint` |
 | Estándar `flake8` | Todo el repositorio, tests incluidos | `make lint` |
 | Excepciones gestionadas, sin *crash* | `FlyIn.main` es la frontera: `MapError`, `SimulationError`, `KeyboardInterrupt` y `BrokenPipeError` se convierten en un mensaje y un código de salida. Por debajo, cada capa traduce sus errores con contexto ([F3](./07-diagramas.md#f3--frontera-de-excepciones-y-códigos-de-salida)) | `test/test_cli.py`: mapas inválidos, fichero ausente, carpeta, no UTF-8, `--window 0`, `--delay nan`, `stderr` cerrado. Ninguno produce un traceback. En `test/test_session.py`: sin pygame, sin ventana posible o cerrando la ventana, la partida sigue en la terminal |
-| *Context managers* para recursos | `with PygameView(...)` (ventana y pygame: `pygame.quit()` al salir), `with TerminalRenderer(...)` (cursor). El mapa se lee con `Path.read_text`, que cierra el fichero solo ([F8](./07-diagramas.md#f8--recursos-y-su-liberación)) | `test_window_is_a_context_manager_that_quits_pygame`, `test_cursor_is_restored_when_the_simulation_fails` |
-| Sin fugas de recursos | Un solo hilo; cerrar la ventana llama a `pygame.quit()` en el acto; `loading.sh` borra su log temporal también con Ctrl+C | ídem, y `test_quit_event_closes_the_window_at_once` |
+| *Context managers* para recursos | `with PygameView(...)` (ventana y pygame: `pygame.quit()` al salir). El mapa se lee con `Path.read_text`, que cierra el fichero solo ([F8](./07-diagramas.md#f8--recursos-y-su-liberación)) | `test_window_is_a_context_manager_that_quits_pygame` |
+| Sin fugas de recursos | Un solo hilo; cerrar la ventana llama a `pygame.quit()` en el acto | ídem, y `test_quit_event_closes_the_window_at_once` |
 | *Type hints* en parámetros, retornos y variables | Todo el paquete y los tests | `make lint-strict` (`mypy --strict` es más exigente que lo que pide el subject) |
 | Docstrings PEP 257 en funciones y clases | Todas las funciones, métodos y clases de `fly_in/`, incluidas las anidadas (`Handler`, las funciones `order`) | Ver "Cómo se auditó" abajo |
 
@@ -72,20 +72,16 @@ test ya es la frase que comprueba. Sí pasan `flake8` y `mypy --strict`.
 | `lint` | `flake8 .` y `mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs` | Sí: los flags exactos |
 | `lint-strict` (opcional) | `flake8 .` y `mypy . --strict` | Sí |
 
-Reglas extra: `menu` (la de por defecto), `hud`, `bench`, `test` y
-`fclean`. Las pantallas de carga (`scripts/loading.sh`) escriben solo en
-`stderr` y **propagan el código de salida** del comando: si `flake8` falla,
-`make lint` falla ([SP00](./07-diagramas.md#sp00--setup-y-makefile)).
-
-**Pregunta probable:** *¿las pantallas de carga no esconden los errores?* No:
-si un paso falla, se enseñan sus últimas 40 líneas y `make` sale con el mismo
-código. `make lint 2>&1 | cat` (sin terminal) da el texto plano de siempre.
+Reglas extra: `bench` y `test`. `make` sin argumentos ejecuta `install`.
+Cada regla escribe el comando real tal cual, sin envoltorios: lo que se ve
+en la terminal es exactamente lo que se ejecuta, y si `flake8` falla,
+`make lint` falla.
 
 ## Cap. III.3 — Pautas adicionales
 
 | Pauta | Estado |
 |---|---|
-| Tests con pytest, con casos límite | 455 tests en `test/` (`make test`) |
+| Tests con pytest, con casos límite | 411 tests en `test/` (`make test`) |
 | `.gitignore` para artefactos de Python | `__pycache__/`, `*.pyc`, `.venv/`, `*.egg-info/`, `.mypy_cache/`, `.pytest_cache/`, `build/`, `dist/` |
 | Entorno virtual | `make install` crea `.venv` |
 
@@ -120,10 +116,10 @@ clase no es "menos OOP" que un método de instancia. La clase agrupa
 responsabilidades (el parser, los criterios de orden, la paleta) y hace de
 espacio de nombres. Donde hay estado, hay instancias: `Graph`, `Simulator`,
 `Drone`, `ReservationTable`, `WhcaPathfinder`, `Session`, `EventLog`,
-`PygameView`, `TerminalRenderer`… Hay también polimorfismo por interfaz:
-`SimulationObserver` es un `Protocol` que cumplen `ReplayRecorder`,
-`TerminalRenderer` y `ObserverGroup`, y `AnimatedView` uno que cumple
-`PygameView`. Las excepciones forman jerarquía (`MapParseError` y
+`PygameView`… Hay también polimorfismo por interfaz:
+`SimulationObserver` es un `Protocol` que cumplen `ReplayRecorder` y
+`ObserverGroup` (el enganche del live coding), y `AnimatedView` uno que
+cumple `PygameView`. Las excepciones forman jerarquía (`MapParseError` y
 `MapValidationError` heredan de `MapError`).
 
 ---
@@ -151,7 +147,7 @@ espacio de nombres. Donde hay estado, hay instancias: `Graph`, `Simulator`,
 | Costes por tipo de zona | `Zone.movement_cost`: 1, 1, 2; `blocked` no se puede atravesar |
 | Capacidades `max_drones` y `max_link_capacity` | `ReservationTable.can_move` en todos los instantes del trayecto |
 | Adaptable a cada mapa | Ventana `-w`, criterios de orden intercambiables (`PlanningOrders`), replanificación continua |
-| Representación visual | Ventana pygame, log a color y HUD: ver [13](./13-defensa-visualizacion.md) |
+| Representación visual | Ventana pygame y log a color: ver [13](./13-defensa-visualizacion.md) |
 
 Las preguntas del recuadro del Cap. VII.1 (eficiencia, complejidad, caché,
 memoria) tienen su respuesta en el `README.md` (sección *Algorithm and
@@ -259,5 +255,5 @@ make test
 make bench
 make run MAP=maps/oficial_maps/hard/03_ultimate_challenge.txt > out.txt
 wc -l out.txt            # 26
-make clean && make fclean
+make clean
 ```

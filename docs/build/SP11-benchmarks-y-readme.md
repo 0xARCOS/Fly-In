@@ -218,7 +218,7 @@ historia completa está en [`12-narrativa-sp11.md`](../12-narrativa-sp11.md).
 | No se ajusta nada a un mapa concreto | Cap. X: los mapas de evaluación pueden ser otros. Solo se tocaron parámetros globales |
 | medium/02 con 15 turnos (justo el objetivo) | Es el óptimo con la lectura estricta de `restricted` (SP06): la conexión `loop_b-exit_point` (capacidad 1) admite un dron cada 2 turnos |
 | Métricas: turnos, movimientos, esperas, movimientos por turno, turno medio de entrega, pico en el aire, tiempo | Las pide el Cap. VII.6 como desempate; se calculan desde la traza, no desde el estado interno |
-| El `Makefile` como pantalla de carga: `make` abre un menú principal y cada target muestra fases animadas con consejos (`scripts/loading.sh`) | La interfaz va entera a `stderr` y cae a texto plano sin terminal o con `NO_COLOR`: `stdout` y los códigos de salida no cambian, y los comandos reales siguen escritos en el `Makefile` |
+| El `Makefile` escribe los comandos tal cual, sin menú ni pantallas de carga; `make` a secas ejecuta `install` | Lo que se ve es lo que se ejecuta, y el subject no pide más |
 | El login del `README.md` es `ariarcos` | Es el usuario del sistema; **confírmalo** antes de entregar |
 
 **Checklist de entrega:** `make install`, `make test`, `make lint` y

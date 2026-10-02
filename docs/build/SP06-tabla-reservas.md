@@ -203,7 +203,7 @@ por comprensión, como arriba, o itera sobre `list(self._zones.items())`.
 
 ---
 
-## Tests de cierre (`test/test_reservation_table.py`, 25 tests)
+## Tests de cierre (`test/test_reservation_table.py`, 27 tests)
 
 - [x] Dos drones no pueden reservar la misma zona de `max_drones=1` en el mismo turno
 - [x] Tres drones **sí** pueden reservar una zona de `max_drones=3`

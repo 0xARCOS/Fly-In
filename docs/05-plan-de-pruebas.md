@@ -25,8 +25,8 @@ Ejecuta todo con `make test`.
 | `test/test_whca.py` | [SP07](./build/SP07-whca.md) | Un dron replica a Dijkstra; dos drones ante un cuello de botella se alternan; ruta parcial al agotar la ventana ✅ |
 | `test/test_simulator.py` | [SP08](./build/SP08-drone-y-simulador.md) | Todos llegan; ninguna ocupación violada en ningún turno; el resultado no depende del orden de la lista de drones; validador de invariantes en los 19 mapas ✅ |
 | `test/test_output_format.py` | [SP09](./build/SP09-formato-salida.md) | Formato exacto de línea; drones quietos omitidos; entregados dejan de aparecer; tránsito imprime la conexión ✅ |
-| `test/test_visualization.py` | [SP10](./build/SP10-visualizacion.md) | Sin ANSI con `--no-color`; cualquier `color=` se resuelve; cursor siempre devuelto; el fotograma muestra capacidades y tránsitos; la grabación tiene un fotograma por turno ✅ |
-| `test/test_session.py` | [SP10](./build/SP10-visualizacion.md) | Elección de vista; log turno a turno; escena sin pygame; la ventana dibuja los 19 mapas, avanza con el log, se puede cerrar, cae a la terminal sin pygame o sin vídeo y no escribe en `stdout` ✅ |
+| `test/test_visualization.py` | [SP10](./build/SP10-visualizacion.md) | Cualquier `color=` se resuelve y `rainbow` cambia con el fotograma; `Painter` cierra siempre con `RESET`, sin color da texto plano y sin truecolor usa 16 colores; la grabación tiene un fotograma por turno ✅ |
+| `test/test_session.py` | [SP10](./build/SP10-visualizacion.md) | Elección de vista; log turno a turno; escena sin pygame; la ventana dibuja los 19 mapas, avanza con el log, `SPACE` pausa, se puede cerrar, cae a la terminal sin pygame o sin vídeo y no escribe en `stdout` ✅ |
 | `test/test_metrics.py` | [SP11](./build/SP11-benchmarks-y-readme.md) | Métricas calculadas a mano; los 10 objetivos oficiales se cumplen con la configuración por defecto ✅ |
 
 ---

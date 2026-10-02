@@ -1,10 +1,11 @@
 """Tests de la visualización (SP10).
 
 La calidad visual se juzga a ojo; aquí se comprueba lo que no debe fallar
-nunca: nada de ANSI sin color, ningún crash por un color raro, el cursor
-siempre devuelto y la grabación completa, turno a turno.
+nunca: nada de ANSI sin color, ningún crash por un color raro, un color
+distinto para cada dron y la grabación completa, turno a turno.
 """
 
+import math
 from pathlib import Path
 from typing import Tuple
 
@@ -42,6 +43,18 @@ def test_any_color_name_resolves(name: str) -> None:
 def test_unknown_color_is_stable_and_no_color_is_none() -> None:
     assert Palette.resolve("turquesa") == Palette.resolve("turquesa")
     assert Palette.resolve(None) is None
+
+
+def test_first_seven_drones_use_distinct_okabe_ito_colors() -> None:
+    okabe_ito_without_black = {
+        (230, 159, 0), (86, 180, 233), (0, 158, 115), (240, 228, 66),
+        (0, 114, 178), (213, 94, 0), (204, 121, 167),
+    }
+    colors = [Palette.drone_color(drone) for drone in range(1, 8)]
+    assert set(colors) == okabe_ito_without_black
+    for i, a in enumerate(colors):
+        for b in colors[i + 1:]:
+            assert math.dist(a, b) > 60, (a, b)
 
 
 def test_rainbow_changes_with_the_frame() -> None:

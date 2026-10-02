@@ -170,7 +170,7 @@ class EventLog:
         if self.nb_drones <= 8:
             # Mostrar todos los drones si hay 8 o menos
             drones = list(range(1, self.nb_drones + 1))
-            parts = [p(f"D{d}", fg=Palette.drone_color(d - 1), bold=True)
+            parts = [p(f"D{d}", fg=Palette.drone_color(d), bold=True)
                      for d in drones]
             self._say("  " + p("DRONES: ", fg=UI_DIM) + " ".join(parts))
         elif self.nb_drones <= 16:
@@ -180,7 +180,7 @@ class EventLog:
             for i, d in enumerate(drones):
                 if i > 0:
                     line += "  "
-                line += p(f"D{d}", fg=Palette.drone_color(d - 1),
+                line += p(f"D{d}", fg=Palette.drone_color(d),
                           bold=True)
             self._say(line)
         else:
@@ -189,7 +189,7 @@ class EventLog:
             for d in range(1, 9):
                 if d > 1:
                     line += "  "
-                line += p(f"D{d}", fg=Palette.drone_color(d - 1),
+                line += p(f"D{d}", fg=Palette.drone_color(d),
                           bold=True)
             line += p(f"  +{self.nb_drones - 8} más", fg=UI_DIM)
             self._say(line)
@@ -236,7 +236,7 @@ class EventLog:
         for zone, ids in sorted(waiting.items()):
             ids.sort()
             names = " ".join(
-                p(f"D{i}", fg=Palette.drone_color(i - 1), bold=True)
+                p(f"D{i}", fg=Palette.drone_color(i), bold=True)
                 for i in ids[:MAX_LISTED]
             )
             if len(ids) > MAX_LISTED:

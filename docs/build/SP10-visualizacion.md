@@ -71,15 +71,15 @@ después de ejecutar tu programa. Queda fatal y es trivial de evitar: una funci�
 `paint(text, color)` que siempre añade el reset, y nunca escribir códigos a
 mano fuera de ella.
 
-⚠️ **No lo des por sentado — respeta `--no-color` y las tuberías**
+⚠️ **No lo des por sentado — respeta las tuberías y `NO_COLOR`**
 Los códigos ANSI en un fichero son basura ilegible. Desactiva el color cuando:
 
-- el usuario pasa `--no-color` ([SP03](./SP03-cli-y-errores.md)),
 - la salida no es un terminal: `sys.stderr.isatty()` es `False`,
 - la variable de entorno `NO_COLOR` está definida (es una convención
   ampliamente respetada).
 
-Una sola bandera en el renderer, comprobada en `paint()`.
+Una sola bandera, comprobada en un único sitio: en Fly-In es
+`FlyIn.make_painter`, y `Painter` es el único objeto que escribe códigos.
 
 ⚠️ **No lo des por sentado — la visualización va a `stderr`**
 Repetido desde [SP09](./SP09-formato-salida.md) porque es donde más se olvida:
@@ -121,53 +121,50 @@ cualquier otro dron tendrá que esperar. Es la diferencia entre una lista de
 posiciones y una explicación de por qué la simulación hace lo que hace — que es
 literalmente lo que pide el criterio de salida.
 
-## Paso 4 — La clase
+## Paso 4 — Las piezas
 
-`fly_in/visualization/terminal_view.py` (crea la carpeta y su `__init__.py`)
+En Fly-In la visualización **no se dibuja mientras se simula**: primero se
+simula entero (milisegundos) y después se enseña lo grabado al ritmo de
+`--delay`. Las piezas, en `fly_in/visualization/`:
+
+| Pieza | Qué hace |
+|---|---|
+| `ReplayRecorder` (`recorder.py`) | Observador del simulador: en cada `on_turn` guarda dónde está cada dron y la línea de `stdout` del turno |
+| `EventLog` (`event_log.py`) | El log de la terminal: un bloque por turno con la línea de `stdout`, las replanificaciones, cada movimiento, quién espera y qué zona se acaba de llenar |
+| `Scene` (`scene.py`) | Los fotogramas de la ventana, precalculados una vez y sin pygame |
+| `PygameView` (`pygame_view.py`) | La ventana: abrir, animar un turno, pausar con `SPACE`, tarjeta final, cerrar |
+| `Session` (`session.py`) | Elige la vista y reproduce la partida en la ventana y en el log a la vez |
+| `Palette` / `Painter` (`palette.py`) | Nombre de color → RGB; RGB → código ANSI con `RESET` siempre |
+
+El punto de enganche con el simulador es uno solo:
 
 ```python
-class TerminalRenderer:
-    """Dibuja el estado de la simulación en la terminal, con color ANSI.
-
-    Escribe siempre en stderr: stdout está reservado al formato de salida
-    del subject (Cap. VII.5).
-    """
-
-    def __init__(self, graph: Graph, use_color: bool = True) -> None: ...
-
-    def render_turn(self, turn: int, drones: list[Drone]) -> None:
-        """Dibuja el estado completo tras aplicar el turno `turn`."""
-
-    def render_summary(self, turns: int, drones: list[Drone]) -> None:
-        """Resumen final: turnos totales y métricas secundarias."""
+class SimulationObserver(Protocol):
+    def on_turn(
+        self, turn: int, moves: Sequence[Move], drones: Sequence[Drone]
+    ) -> None: ...
 ```
 
-⚠️ **No lo des por sentado — el renderer NO calcula nada**
+⚠️ **No lo des por sentado — la visualización NO calcula nada**
 Recibe el estado y lo dibuja. Si empieza a deducir ocupaciones o a recorrer
 rutas, has duplicado lógica del simulador en la capa de presentación, y algún
-día divergirán: verás una cosa en pantalla y otra en la salida. El renderer lee;
-no piensa.
+día divergirán: verás una cosa en pantalla y otra en la salida. Lee; no piensa.
 
-## Paso 5 — Opcional: la vista gráfica
+## Paso 5 — La vista gráfica
 
-Solo si el mandatory está sólido. Las coordenadas `x`/`y` de las zonas existen
-exactamente para esto: son las posiciones de los nodos en el dibujo.
+Las coordenadas `x`/`y` de las zonas existen exactamente para esto: son las
+posiciones de los nodos en el dibujo.
 
 | Opción | Ventaja | Inconveniente |
 |---|---|---|
-| `matplotlib` | Probablemente ya instalado; fácil de exportar a PNG/GIF para el README | Animación tosca |
-| `pygame` | Animación fluida, control total | Una dependencia más, más código |
-| SVG generado a mano | Cero dependencias, se ve en cualquier navegador y se incrusta en el README | Sin animación real (o un frame por turno) |
+| `matplotlib` | Fácil de exportar a PNG/GIF | Animación tosca |
+| **`pygame-ce`** (la elegida) | Animación fluida, control total, el mismo `import pygame` | Una dependencia, más código |
+| SVG generado a mano | Cero dependencias | Sin animación real |
 
-⚠️ **Sea cual sea, debe ser opcional en tiempo de ejecución.** Si `pygame` no
-está instalado, el programa debe seguir funcionando con la terminal, no
-reventar en el `import`. Usa un import perezoso dentro de la función, con
-`try/except ImportError` y un aviso claro.
-
-Y recuerda: `dependencies = []` en `pyproject.toml` hoy. Cualquier librería
-gráfica va en un extra aparte (`[project.optional-dependencies].viz`), nunca en
-las dependencias obligatorias — si no, `make install` falla en una máquina sin
-entorno gráfico y el proyecto entero deja de arrancar.
+⚠️ **Debe ser opcional en tiempo de ejecución.** `pygame-ce` está en
+`dependencies` de `pyproject.toml`, pero se importa **dentro** de
+`Session._play_window`, con `try/except ImportError`: si falta, o si no puede
+abrir la ventana, el programa sigue en la terminal con un aviso.
 
 ---
 
@@ -176,9 +173,9 @@ entorno gráfico y el proyecto entero deja de arrancar.
 La visualización es difícil de testear y tampoco tiene mucho sentido hacerlo a
 fondo. Lo mínimo que sí conviene:
 
-- [x] `--no-color` no emite ningún código ANSI
+- [x] Sin color (`NO_COLOR` o tubería) no se emite ningún código ANSI
 - [x] Un `color=` desconocido no lanza excepción
-- [x] Nada de lo que emite el renderer aparece en `stdout`
+- [x] Nada de lo que emite la visualización aparece en `stdout`
 - [x] Un mapa sin ningún `color=` se renderiza correctamente
 
 Lo demás se valida a ojo, que es exactamente el criterio de salida.
@@ -189,7 +186,7 @@ Lo demás se valida a ojo, que es exactamente el criterio de salida.
 
 - [x] Ejecutas `bottleneck.txt` y **se ve** por qué los drones se turnan
 - [x] Los colores del mapa se reflejan en pantalla
-- [x] `--no-color` y las tuberías dan salida limpia
+- [x] `NO_COLOR` y las tuberías dan salida limpia
 - [x] `stdout` sigue conteniendo solo las líneas de turno
 - [x] Una captura guardada para el `README.md`
 
@@ -202,10 +199,9 @@ Lo demás se valida a ojo, que es exactamente el criterio de salida.
 
 ## Decisiones tomadas
 
-Implementado en `fly_in/visualization/` (`palette.py`, `canvas.py`,
-`terminal_view.py`, `recorder.py`, `scene.py`, `pygame_view.py`,
-`event_log.py` y `session.py`), probado en `test/test_visualization.py` y
-`test/test_session.py` (101 tests). La historia completa, con capturas,
+Implementado en `fly_in/visualization/` (`palette.py`, `recorder.py`,
+`scene.py`, `pygame_view.py`, `event_log.py` y `session.py`), probado en `test/test_visualization.py` y
+`test/test_session.py`. La historia completa, con capturas,
 está en [`11-narrativa-sp10.md`](../11-narrativa-sp10.md).
 
 | Decisión | Alternativa descartada | Por qué |
@@ -217,12 +213,11 @@ está en [`11-narrativa-sp10.md`](../11-narrativa-sp10.md).
 | Simular primero y **enseñar después** a ritmo de `--delay` (`Session.play`) | Animar mientras se simula | La simulación dura milisegundos; así el ritmo lo marca solo la presentación, igual para las dos pantallas |
 | `auto` elige la ventana solo con terminal **y** pantalla gráfica; si pygame falla o se cierra la ventana, sigue solo en la terminal | Intentar abrirla siempre | Nunca colgarse ni fallar (Cap. III.1): tuberías, CI y tests usan el log |
 | `Scene` precalcula los fotogramas y no importa pygame | Calcular posiciones en cada fotograma | La ventana dibuja a 60 fps; así el bucle solo consulta listas, y la escena se prueba sin pantalla |
-| Se conserva el HUD (`--view hud`, `make hud`) | — | Para ver el mapa sin ventana gráfica |
-| El renderer es un **observador** del simulador (`on_turn`) | Que el simulador llame a `print` | El simulador no sabe nada de pantallas; el renderer solo lee drones y `Move`. El tiempo que pasa dentro del observador (las pausas de la animación) se descuenta del tiempo de cálculo |
-| Mapa dibujado con las coordenadas `x`/`y` del archivo, escala ajustada al ancho | Lista de zonas | La lista del paso 3 no enseña la topología; el mapa sí, y las coordenadas existen para esto |
-| Forma de la zona según el tipo (`( )`, `< >`, `[ ]`, `▓▓▓`, `{ }`) | Solo color | Con `--no-color` sigue distinguiéndose el tipo |
+| Sin HUD de terminal | Un HUD a pantalla completa como tercera vista (se llegó a hacer) | La hoja pide terminal a color **o** gráfico; la ventana y el log ya lo cubren y el HUD era código que defender sin que nadie lo pidiera |
+| La grabación es un **observador** del simulador (`on_turn`) | Que el simulador llame a `print` | El simulador no sabe nada de pantallas; el observador solo lee drones y `Move`. El tiempo que pasa dentro del observador se descuenta del tiempo de cálculo |
+| Mapa dibujado con las coordenadas `x`/`y` del archivo, una escala por eje ajustada a la ventana | Lista de zonas | La lista del paso 3 no enseña la topología; el mapa sí, y las coordenadas existen para esto |
 | Colores: tabla de nombres → RGB, `#rrggbb`, `rainbow` animado y tono derivado de un hash para lo desconocido | Color por defecto para lo desconocido | Nunca falla y dos zonas con el mismo color raro se ven iguales. Truecolor si `COLORTERM` lo anuncia; si no, el más cercano de 16 |
-| Tres niveles de silencio: en vivo (terminal), registro corto (tubería o fichero) y nada (`-q`) | Siempre animar | Los códigos ANSI en un fichero son basura; `NO_COLOR` y `--no-color` quitan el color incluso en terminal |
-| El cursor se oculta y se devuelve con un gestor de contexto | Devolverlo al final | Si la simulación falla o se pulsa Ctrl+C, el cursor vuelve igual (hay un test) |
-| La cabecera repite la línea de `stdout` del turno | — | Une lo que se ve con lo que se entrega |
-| PAR en los mapas oficiales | — | El objetivo del subject convierte la pantalla final en un "¿lo he conseguido?" |
+| Tres niveles: ventana + log (terminal con pantalla), log solo (sin pantalla; sin pausas ni color si no hay terminal) y nada (`-q`) | Siempre animar | Los códigos ANSI en un fichero son basura; `NO_COLOR` quita el color incluso en terminal |
+| La cabecera de cada turno del log repite su línea de `stdout` | — | Une lo que se ve con lo que se entrega |
+| PAR en los mapas oficiales (briefing y tarjeta final) | — | El objetivo del subject convierte la tarjeta final en un "¿lo he conseguido?" (`OVER PAR` si no) |
+| `SPACE` pausa; sin navegación por turnos | Flechas para ir y venir entre turnos | La navegación se probó y se retiró: no llegó a funcionar y el log ya da el detalle de cada turno |

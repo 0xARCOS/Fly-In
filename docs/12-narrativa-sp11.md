@@ -46,7 +46,7 @@ alguien que solo leyera la salida.
 | `peak_airborne` | Máximo de `Move` con `arrives=False` en un turno | Uso de las zonas `restricted` |
 | `seconds` | Tiempo de cálculo, sin la animación | Eficiencia |
 
-Salen por `stderr` con `--metrics`, en la pantalla final del HUD y en
+Salen por `stderr` con `--metrics`, en la tarjeta final de la ventana y en
 `make bench`. En `bottleneck.txt` se comprueban a mano en un test: D1 entrega
 en el turno 2, D2 en el 3 y D3 en el 4, así que el turno medio es 3; cada uno se
 mueve dos turnos, así que hay 6 movimientos y (2 + 3 + 4) − 6 = 3 esperas.
@@ -180,8 +180,8 @@ ejecutó todo desde cero:
 | Paso | Resultado |
 |---|---|
 | `make install` | ✅ |
-| `make test` | ✅ 416 tests |
-| `make lint-strict` | ✅ sin avisos en 37 ficheros |
+| `make test` | ✅ 411 tests |
+| `make lint-strict` | ✅ sin avisos en 40 ficheros |
 | pygame desde `pyproject.toml` | ✅ `make install` instala `pygame-ce`, la única dependencia de ejecución |
 
 La prueba en limpio es la que descubre las dependencias implícitas: algo que
@@ -209,7 +209,7 @@ Y los cambios más probables tienen un único sitio donde tocar:
 
 | Cambio | Dónde |
 |---|---|
-| Un tipo de zona nuevo | `ZoneType` y `MOVEMENT_COST` en `models/zone.py` (+ su forma en `terminal_view.BRACKETS` y su color en `pygame_view.TYPE_COLOR`) |
+| Un tipo de zona nuevo | `ZoneType` y `MOVEMENT_COST` en `models/zone.py` (+ su color en `pygame_view.TYPE_COLOR`) |
 | Otro criterio de prioridad | Una función `(drones, turno) → lista` pasada como `order=`; se compara con `make bench` añadiéndola a `ORDERS` |
 | La lectura permisiva de `restricted` | `can_move` y `reserve_move` en `reservation_table.py` (la sección 5 lo hizo así) |
 | El formato de salida | `output/formatter.py` |

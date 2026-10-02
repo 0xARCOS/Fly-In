@@ -36,7 +36,6 @@ import pygame
 from fly_in.models.zone import UNLIMITED, Zone, ZoneType
 from fly_in.simulation.metrics import Metrics
 from fly_in.visualization.palette import RGB, Palette
-from fly_in.visualization.playback_controller import PlaybackController
 from fly_in.visualization.scene import MapPoint, Scene, Spot
 
 Pixel = Tuple[float, float]
@@ -44,7 +43,7 @@ Pixel = Tuple[float, float]
 FPS = 60
 DEFAULT_SIZE = (1280, 800)
 MIN_SIZE = (900, 600)
-# Márgenes que el mapa deja libres para los paneles de arriba y abajo.
+# Márgenes alrededor del mapa (arriba se escribe el aviso de replan).
 TOP, BOTTOM, SIDE = 30, 30, 70
 MAX_SCALE = 170.0      # píxeles por unidad del mapa, como mucho
 MAX_STRETCH = 2.5      # cuánto puede estirarse un eje respecto al otro
@@ -193,14 +192,12 @@ class PygameView:
     """
 
     def __init__(self, scene: Scene, title: str, window: int,
-                 target: Optional[int] = None,
-                 controller: Optional[PlaybackController] = None) -> None:
+                 target: Optional[int] = None) -> None:
         """Prepara la ventana (sin abrirla todavía)."""
         self.scene = scene
         self.title = title
         self.window = window
         self.target = target
-        self.controller = controller
         self.closed = False
         self._screen: Optional[pygame.Surface] = None
         self._clock: Optional[pygame.time.Clock] = None
@@ -320,13 +317,11 @@ class PygameView:
         self._key_pressed = False
         started = time.perf_counter()
         while not self.closed and not self._key_pressed:
-            waited = time.perf_counter() - started
-            if waited >= hold:
+            if time.perf_counter() - started >= hold:
                 return
-            appear = min(1.0, waited / 0.6)
             self._tick()
             self._paint(self._frame, 1.0,
-                        lambda: self._draw_end_card(metrics, appear))
+                        lambda: self._draw_end_card(metrics))
 
     def save_screenshot(self, path: str) -> None:
         """Guarda lo que hay ahora en la ventana (para la documentación)."""
@@ -365,25 +360,6 @@ class PygameView:
                 self._key_pressed = True
                 if event.key in (pygame.K_ESCAPE, pygame.K_q):
                     self._close_window()
-                elif self.controller is not None:
-                    if event.key == pygame.K_SPACE:
-                        self.controller.toggle_play()
-                    elif event.key == pygame.K_RIGHT:
-                        self.controller.next()
-                    elif event.key == pygame.K_LEFT:
-                        self.controller.prev()
-                    elif event.key == pygame.K_HOME:
-                        self.controller.home()
-                    elif event.key == pygame.K_END:
-                        self.controller.end()
-                    elif event.key == pygame.K_PAGEUP:
-                        self.controller.advance_frames(-5)
-                    elif event.key == pygame.K_PAGEDOWN:
-                        self.controller.advance_frames(5)
-                    elif event.key == pygame.K_UP:
-                        self.controller.set_speed(0.1)
-                    elif event.key == pygame.K_DOWN:
-                        self.controller.set_speed(-0.1)
                 elif event.key == pygame.K_SPACE:
                     self._paused = not self._paused
         return dt
@@ -818,14 +794,14 @@ class PygameView:
         screen.blit(count, count.get_rect(center=(box.centerx,
                                                   box.y + 290)))
 
-    def _draw_end_card(self, metrics: Metrics, appear: float) -> None:
-        """MISSION COMPLETE: turnos, tres estrellas y las métricas."""
+    def _draw_end_card(self, metrics: Metrics) -> None:
+        """MISSION COMPLETE: turnos y las métricas de movimientos."""
         screen = self._screen
         assert screen is not None
         fonts = self._fonts
         self._dim(screen)
         width, height = screen.get_size()
-        box = pygame.Rect(0, 0, 560, 420)
+        box = pygame.Rect(0, 0, 560, 340)
         box.center = (width // 2, height // 2)
         self._panel(screen, box)
         over = self.target is not None and metrics.turns > self.target
@@ -842,18 +818,6 @@ class PygameView:
         unit = fonts.render(fonts.strong, "TURNS", DIM)
         screen.blit(unit, unit.get_rect(
             midleft=(spot[0] + turns.get_width() // 2 + 10, spot[1] + 20)))
-        stars = (("DELIVERED", True), ("NO VIOLATIONS", True),
-                 ("NO PAR" if self.target is None else f"PAR {self.target}",
-                  self.target is not None and not over))
-        for index, (label, earned) in enumerate(stars):
-            x = box.centerx + (index - 1) * 150
-            shown = earned and appear >= (index + 1) / 3
-            if shown:
-                self._glow.draw(screen, GOLD, (x, box.y + 238), 34)
-            self._star(screen, GOLD if shown else (58, 63, 92),
-                       (x, box.y + 238), 20)
-            text = fonts.render(fonts.tiny, label, TEXT if earned else DIM)
-            screen.blit(text, text.get_rect(midtop=(x, box.y + 264)))
         cells = (("MOVES", str(metrics.total_moves)),
                  ("MOVES/TURN", f"{metrics.avg_moves_per_turn:.2f}"),
                  ("AVG DELIVERY", f"T{metrics.avg_turns_per_drone:.1f}"),
@@ -862,7 +826,7 @@ class PygameView:
                  ("COMPUTE", f"{metrics.seconds * 1000:.0f} ms"))
         for index, (key, val) in enumerate(cells):
             x = box.x + 50 + (index % 3) * 170
-            y = box.y + 298 + (index // 3) * 44
+            y = box.y + 218 + (index // 3) * 44
             screen.blit(fonts.render(fonts.tiny, key, DIM), (x, y))
             screen.blit(fonts.render(fonts.strong, val, TEXT), (x, y + 14))
         hint = fonts.render(fonts.tiny, "press any key or close the window",

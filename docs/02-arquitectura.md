@@ -54,8 +54,6 @@ fly_in/
 │   └── formatter.py               # SP09 — OutputFormatter
 └── visualization/                 # Se crea en SP10
     ├── palette.py                 # SP10 — colores y códigos ANSI
-    ├── canvas.py                  # SP10 — MapLayout, Canvas
-    ├── terminal_view.py           # SP10 — TerminalRenderer
     ├── recorder.py                # SP10 — ReplayRecorder: posiciones por turno
     ├── scene.py                   # SP10 — Scene: fotogramas precalculados (sin pygame)
     ├── pygame_view.py             # SP10 — PygameView: la ventana (único import de pygame)
@@ -185,8 +183,8 @@ classDiagram
         +format_turn(list~Move~) str
     }
 
-    class TerminalRenderer {
-        +render(int, Graph, list~Drone~) None
+    class Session {
+        +play() None
     }
 
     Graph "1" *-- "many" Zone
@@ -205,7 +203,7 @@ classDiagram
     Simulator "1" o-- "many" Drone
     Simulator --> WhcaPathfinder
     Simulator --> OutputFormatter
-    Simulator --> TerminalRenderer
+    Session ..> Simulator : enseña la traza de
 ```
 
 ---
@@ -224,7 +222,7 @@ flowchart LR
     W <--> S
     S -->|cada W/2 turnos| W
     S --> O[OutputFormatter<br/>SP09]
-    S --> V[TerminalRenderer<br/>SP10]
+    S --> V[Session: ventana + log<br/>SP10]
     O --> STDOUT[stdout]
 ```
 
