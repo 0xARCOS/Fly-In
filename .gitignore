@@ -12,4 +12,4 @@ __pycache__/
 .vscode/
 
 # Paquete de entrega (documentación de defensa, no versionado)
-entrega/
+# entrega/
