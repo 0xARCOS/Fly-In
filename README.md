@@ -1,6 +1,6 @@
 *This project has been created as part of the 42 curriculum by ariarcos.*
 
-# Fly-In
+# Fly-In 2.0
 
 > Route a whole swarm of drones from `start_hub` to `end_hub` through a graph
 > of capacity-limited zones in as few turns as possible — and watch it happen.
