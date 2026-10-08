@@ -31,7 +31,7 @@ lint-strict:
 	$(PYTHON) -m mypy . --strict
 
 test:
-	$(PYTHON) -m pytest -q --ignore=entrega/
+	$(PYTHON) -m pytest -q
 
 clean:
 	rm -rf .mypy_cache .pytest_cache *.egg-info

@@ -1,6 +1,6 @@
 """Tests de WhcaPathfinder (SP07).
 
-Mismo orden que docs/build/SP07-whca.md: cada bloque solo tiene sentido si
+Mismo orden que la construcción de WHCA*: cada bloque solo tiene sentido si
 el anterior pasa. Convención de tiempo de SP06: "instante t" = estado tras
 t turnos; un movimiento que sale en T con coste c llega en T+c.
 """

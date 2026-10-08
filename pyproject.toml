@@ -24,6 +24,6 @@ include = ["fly_in*"]
 [tool.mypy]
 python_version = "3.10"
 no_implicit_optional = true
-exclude = ["\\.venv", "entrega"]
+exclude = ["\\.venv"]
 [tool.pytest.ini_options]
 testpaths = ["test"]

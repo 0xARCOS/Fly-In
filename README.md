@@ -5,8 +5,6 @@
 > Route a whole swarm of drones from `start_hub` to `end_hub` through a graph
 > of capacity-limited zones in as few turns as possible — and watch it happen.
 
-![The Fly-In pygame window: the challenger map, turn 12](docs/img/window_challenger.png)
-
 ## Description
 
 Fly-In reads a map of **zones** (nodes with a type, coordinates and a
@@ -216,13 +214,9 @@ what they show is exactly what `stdout` says.
 **The pygame window.** Everything is drawn with `pygame.draw` primitives
 (lines, polygons, circles, arcs) and text; there are no image files.
 
-It opens on a **mission briefing with a 3-2-1-GO countdown**:
-
-![Mission briefing: 3-2-1-GO countdown](docs/img/window_briefing.png)
+It opens on a **mission briefing with a 3-2-1-GO countdown**.
 
 During the simulation, the map shows real-time capacity and drone positions:
-
-![The pygame window, medium/02 turn 5: two full zones and a drone in the air](docs/img/window_medium.png)
 
 - The **map is laid out from the file's own coordinates**. Zones are glowing
   hexagons whose decoration tells their type: a rotating amber dashed ring
@@ -243,8 +237,6 @@ During the simulation, the map shows real-time capacity and drone positions:
 At completion, the **MISSION COMPLETE** card shows the number of turns and
 the moves that were executed: total moves, moves per turn, average delivery
 turn, waits, peak airborne and compute time.
-
-![Mission complete card with metrics](docs/img/window_complete.png)
 
 - **Keys**: `SPACE` pauses and resumes the animation (the terminal log waits
   for it); `ESC`, `Q` or closing the window removes it at once and the run
@@ -311,6 +303,3 @@ the two can be checked against each other.
   `pygame.display`, `pygame.time.Clock`, `pygame.event`.
 - ECMA-48 / "ANSI escape code" references for terminal colors, and
   [no-color.org](https://no-color.org) for the `NO_COLOR` convention.
-- The Spanish design guides of this repository: [`docs/`](docs/README.md)
-  (rules, roadmap, architecture, algorithm, test plan and one narrative per
-  stage).
