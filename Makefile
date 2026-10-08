@@ -1,41 +1,44 @@
 VENV        := .venv
-PYTHON      := $(VENV)/bin/python
-PIP         := $(VENV)/bin/pip
+STAMP       := $(VENV)/.installed
 MAP         ?= maps/valid/linear.txt
 ARGS        ?=
 
 .DEFAULT_GOAL := install
-.PHONY: install run capacity bench debug lint lint-strict test clean
+.PHONY: install run debug clean fclean lint lint-strict
 
-install:
+# These rules use the tools of $(VENV) when it exists; only install creates it.
+run debug lint lint-strict: export PATH := $(CURDIR)/$(VENV)/bin:$(PATH)
+
+install: $(STAMP)
+
+$(STAMP): pyproject.toml
 	python3 -m venv $(VENV)
-	$(PIP) install --upgrade pip
-	$(PIP) install -e ".[dev]"
+	$(VENV)/bin/pip install --upgrade pip
+	$(VENV)/bin/pip install -e ".[dev]"
+	touch $(STAMP)
 
 run:
-	$(PYTHON) -m fly_in.main $(MAP) $(ARGS)
-
-capacity:
-	$(PYTHON) -m fly_in.main $(MAP) --capacity-info $(ARGS)
-
-bench:
-	$(PYTHON) -m fly_in.benchmarks
+	python3 -m fly_in.main $(MAP) $(ARGS)
 
 debug:
-	$(PYTHON) -m pdb -m fly_in.main $(MAP)
-
-lint:
-	$(PYTHON) -m flake8 .
-	$(PYTHON) -m mypy . --warn-return-any --warn-unused-ignores \
-		--ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
-
-lint-strict:
-	$(PYTHON) -m flake8 .
-	$(PYTHON) -m mypy . --strict
-
-test:
-	$(PYTHON) -m pytest -q --ignore=entrega/
+	python3 -m pdb -m fly_in.main $(MAP) $(ARGS)
 
 clean:
-	rm -rf .mypy_cache .pytest_cache *.egg-info
-	find . -path ./$(VENV) -prune -o -type d -name "__pycache__" -exec rm -rf {} +
+	rm -rf .mypy_cache .pytest_cache build dist
+	find . -path ./$(VENV) -prune -o -name "*.egg-info" -prune \
+		-exec rm -rf {} +
+	find . -path ./$(VENV) -prune -o -name "__pycache__" -type d -prune \
+		-exec rm -rf {} +
+	find . -path ./$(VENV) -prune -o -name "*.py[co]" -type f -exec rm -f {} +
+
+fclean: clean
+	rm -rf $(VENV)
+
+lint:
+	flake8 .
+	mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports \
+		--disallow-untyped-defs --check-untyped-defs
+
+lint-strict:
+	flake8 .
+	mypy . --strict

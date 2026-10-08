@@ -5,8 +5,6 @@
 > Route a whole swarm of drones from `start_hub` to `end_hub` through a graph
 > of capacity-limited zones in as few turns as possible — and watch it happen.
 
-![The Fly-In pygame window: the challenger map, turn 12](entrega/img/window_challenger.png)
-
 ## Description
 
 Fly-In reads a map of **zones** (nodes with a type, coordinates and a
@@ -40,12 +38,21 @@ same `import pygame` API), for the graphical window; `flake8`, `mypy` and
 $ make install                                   # creates .venv and installs everything (also plain `make`)
 $ make run MAP=maps/oficial_maps/easy/01_linear_path.txt
 $ make run MAP=maps/valid/bottleneck.txt ARGS="--delay 1 --metrics"
-$ make capacity MAP=maps/valid/bottleneck.txt ARGS=-q  # per-turn capacity usage
+$ make run MAP=maps/valid/bottleneck.txt ARGS="--capacity-info -q"  # per-turn capacity usage
 $ make debug MAP=maps/valid/bottleneck.txt       # the program under pdb
-$ make bench                                     # official benchmarks + config comparison
-$ make test                                      # test suite
-$ make lint && make lint-strict                  # flake8 + mypy (+ --strict)
-$ make clean                                     # tool caches and __pycache__
+$ make lint                                      # flake8 . + mypy . with the subject's flags
+$ make lint-strict                               # flake8 . + mypy . --strict
+$ make clean                                     # tool caches, __pycache__, *.egg-info
+$ make fclean                                    # clean + removes .venv
+```
+
+`run`, `debug`, `lint` and `lint-strict` use the tools of `.venv`; only
+`make install` creates it. Tests and benchmarks run from the same
+environment:
+
+```console
+$ .venv/bin/python -m pytest                     # test suite
+$ .venv/bin/python -m fly_in.benchmarks          # official benchmarks + config comparison
 ```
 
 Direct use and options:
@@ -166,7 +173,7 @@ booked `(zone, instant)` and `(connection, instant)`. The challenger (25 drones,
 
 ### Benchmarks
 
-`make bench`, W = 8, planning order by id:
+`python -m fly_in.benchmarks`, W = 8, planning order by id:
 
 | Level | Map | Drones | Target | **Turns** | Time |
 |---|---|---|---|---|---|
@@ -219,8 +226,6 @@ what they show is exactly what `stdout` says.
 at a glance: white background, `pygame.draw` circles, lines and text, no
 image files.
 
-![The pygame window, medium/02 turn 5: two full zones and a drone in the air](entrega/img/window_medium.png)
-
 - The **map is laid out from the file's own coordinates**. Zones are flat
   pastel circles with a thin outline, colored by `color=` (named colors,
   `#rrggbb`, or a stable hash-derived hue for any other word) or, without
@@ -236,8 +241,6 @@ image files.
 - One status line at the top: map, turn, delivered count and the keys. At
   the end it shows the number of turns against the target until a key is
   pressed.
-
-![Final frame with the turn count](entrega/img/window_complete.png)
 
 - **Keys**: `SPACE` pauses and resumes the animation (the terminal log waits
   for it); `ESC`, `Q` or closing the window removes it at once and the run
@@ -307,28 +310,23 @@ and connection after each turn.
   `pygame.display`, `pygame.time.Clock`, `pygame.event`.
 - ECMA-48 / "ANSI escape code" references for terminal colors, and
   [no-color.org](https://no-color.org) for the `NO_COLOR` convention.
-- The Spanish documentation of this repository, all in
-  [`entrega/`](entrega/README.md): rules, roadmap, architecture, algorithm,
-  test plan, a build guide and a narrative per stage, flow diagrams, the
-  defense documents and the subject itself.
 
 **How AI was used.** Claude (Anthropic) was used as a pair programmer:
 
-- to write and maintain the Spanish documentation in `entrega/` (the build
-  guides for each stage and the narrative documents);
+- to write and maintain the Spanish design documentation (the build guides
+  for each stage and the narrative documents), kept outside this delivery;
 - to review the parser and domain model and fix the issues found before the
   reservation table;
 - to implement, together with their tests, the cooperative search
   (`whca.py`), the simulator (`simulation/`), the output formatter, the
   terminal and pygame visualizations and the benchmark runner, following
-  the design written in `entrega/build/`;
+  the design written in the build guides;
 - to design the independent invariant validator and to mutation-test the
   suite (introducing bugs on purpose to check that the tests catch them);
 - to audit the project against the subject (docstrings, object-oriented
   structure, exception handling, resource management), which led to moving
   every module-level helper into a class and handling closed pipes, and to
-  write the defense documents (`entrega/defensa/`) and the flow diagrams
-  (`entrega/referencia/07-diagramas.md`);
+  write the defense documents and the flow diagrams;
 - to give each drone one stable color (Okabe-Ito, then golden-angle hues)
   shared by the window and the event log, with a legend, and to prepare the
   defense material (per-stage narratives, flow diagrams and the
@@ -338,19 +336,13 @@ and connection after each turn.
   a `make` menu with loading screens, turn-by-turn navigation keys and four
   redundant flags), and to check every document against the current code;
 - to prepare the delivery: translate every code comment and docstring to
-  English, gather all the documentation in `entrega/` and bring it up to date
-  with the minimal window and `--capacity-info`.
+  English and bring the documentation up to date with the minimal window
+  and `--capacity-info`.
 
 An earlier version showed the animation in a web browser. It was replaced by
 the pygame window so that every delivered line of code is Python that can be
 explained and defended in the peer review.
 
-Every design decision is documented with its reasons in `entrega/build/`,
+Every design decision is documented with its reasons in the build guides,
 and every piece of AI-generated code was read, run and tested before being
 kept.
-
-All the documentation lives in [`entrega/`](entrega/README.md): narratives
-for SP00–SP11, flow diagrams for the entire system, the visual architecture
-with citations, a checklist against the evaluation sheet, the
-`--capacity-info` live-coding guide and a changelog
-([`entrega/CAMBIOS.md`](entrega/CAMBIOS.md)).

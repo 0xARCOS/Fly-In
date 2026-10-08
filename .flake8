@@ -1,2 +1,2 @@
 [flake8]
-exclude = .venv,.git,__pycache__,.mypy_cache,.pytest_cache,*.egg-info,entrega
+extend-exclude = .venv,venv,env,.env,.mypy_cache,.pytest_cache,*.egg-info,build,dist

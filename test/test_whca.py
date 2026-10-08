@@ -1,6 +1,6 @@
 """Tests for WhcaPathfinder (SP07).
 
-Same order as entrega/build/SP07-whca.md: each block only makes sense if
+Same order in which WHCA* was built: each block only makes sense if
 the previous one passes. SP06 time convention: "instant t" = state after
 t turns; a move that leaves at T with cost c arrives at T+c.
 """
