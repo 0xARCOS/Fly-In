@@ -1,6 +1,6 @@
 """Official benchmarks of the subject (Chap. VII.7) and their runner (SP11).
 
-Usage: `make bench` or `python -m fly_in.benchmarks`. Prints two tables:
+Usage: `python -m fly_in.benchmarks`. Prints two tables:
 
 1. The 10 official maps with the default configuration: turns, target,
    whether it is met, time and secondary metrics.

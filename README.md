@@ -32,19 +32,27 @@ log with drone colors and a legend, both advancing turn by turn together.
 Requirements: **Python ≥ 3.10**, `make`. One runtime dependency,
 [`pygame-ce`](https://pyga.me) (the maintained community edition of pygame,
 same `import pygame` API), for the graphical window; `flake8`, `mypy` and
-`pytest` for development. `make install` installs all of them in `.venv`;
-every other rule creates it first if it is missing.
+`pytest` for development. `make install` installs all of them in `.venv`.
 
 ```console
 $ make install                                   # creates .venv and installs everything (also plain `make`)
 $ make run MAP=maps/oficial_maps/easy/01_linear_path.txt
 $ make run MAP=maps/valid/bottleneck.txt ARGS="--delay 1 --metrics"
-$ make capacity MAP=maps/valid/bottleneck.txt ARGS=-q  # per-turn capacity usage
+$ make run MAP=maps/valid/bottleneck.txt ARGS="--capacity-info -q"  # per-turn capacity usage
 $ make debug MAP=maps/valid/bottleneck.txt       # the program under pdb
-$ make bench                                     # official benchmarks + config comparison
-$ make test                                      # test suite
-$ make lint && make lint-strict                  # flake8 + mypy (+ --strict)
-$ make clean                                     # removes .venv, tool caches and __pycache__
+$ make lint                                      # flake8 . + mypy . with the subject's flags
+$ make lint-strict                               # flake8 . + mypy . --strict
+$ make clean                                     # tool caches, __pycache__, *.egg-info
+$ make fclean                                    # clean + removes .venv
+```
+
+`run`, `debug`, `lint` and `lint-strict` use the tools of `.venv`; only
+`make install` creates it. Tests and benchmarks run from the same
+environment:
+
+```console
+$ .venv/bin/python -m pytest                     # test suite
+$ .venv/bin/python -m fly_in.benchmarks          # official benchmarks + config comparison
 ```
 
 Direct use and options:
@@ -165,7 +173,7 @@ booked `(zone, instant)` and `(connection, instant)`. The challenger (25 drones,
 
 ### Benchmarks
 
-`make bench`, W = 8, planning order by id:
+`python -m fly_in.benchmarks`, W = 8, planning order by id:
 
 | Level | Map | Drones | Target | **Turns** | Time |
 |---|---|---|---|---|---|

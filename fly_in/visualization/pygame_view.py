@@ -229,7 +229,7 @@ class PygameView:
     def _tick(self) -> float:
         """Wait for the next frame, handle events and return dt."""
         assert self._clock is not None
-        dt = self._clock.tick(FPS) / 1000.0
+        dt: float = self._clock.tick(FPS) / 1000.0
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self._close_window()
