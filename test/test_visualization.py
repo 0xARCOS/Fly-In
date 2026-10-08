@@ -1,8 +1,8 @@
-"""Tests de la visualización (SP10).
+"""Visualization tests (SP10).
 
-La calidad visual se juzga a ojo; aquí se comprueba lo que no debe fallar
-nunca: nada de ANSI sin color, ningún crash por un color raro, un color
-distinto para cada dron y la grabación completa, turno a turno.
+Visual quality is judged by eye; here we check what must never fail: no
+ANSI without color, no crash on an odd color, a distinct color for each
+drone and the complete recording, turn by turn.
 """
 
 import math
@@ -26,11 +26,11 @@ ALL_MAPS = sorted(
 
 
 def load(relative: str) -> Tuple[int, Graph]:
-    """(nb_drones, grafo) de un mapa de maps/."""
+    """(nb_drones, graph) of a map from maps/."""
     return MapParser.parse((MAPS_DIR / relative).read_text())
 
 
-# --- paleta------------------------------------------------------------
+# --- palette ----------------------------------------------------------
 
 @pytest.mark.parametrize(
     "name", ["red", "RED", "crimson", "turquesa", "#ff8800", "rainbow", "x"]
@@ -81,7 +81,7 @@ def test_visible_len_and_pad_ignore_ansi() -> None:
     assert Painter.visible_len(Painter.pad(styled, 7)) == 7
 
 
-# --- grabación ----------------------------------------------------------
+# --- recording ---------------------------------------------------------
 
 def test_recorder_keeps_one_frame_per_turn_plus_the_start() -> None:
     nb_drones, graph = load("valid/restricted_chain.txt")

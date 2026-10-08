@@ -1,4 +1,4 @@
-# Dos start_hub -> debe fallar el criterio "exactamente un start_hub"
+# Two start_hub -> must fail the "exactly one start_hub" rule
 nb_drones: 2
 start_hub: start1 0 0
 start_hub: start2 1 0

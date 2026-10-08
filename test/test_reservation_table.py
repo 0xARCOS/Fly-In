@@ -1,8 +1,8 @@
-"""Tests de ReservationTable (SP06).
+"""Tests for ReservationTable (SP06).
 
-Recordatorio de la convención: "instante t" = estado tras t turnos.
-Zona (z, t) = drones en z en el instante t. Conexión (c, t) = drones
-cruzando c entre t y t+1.
+Reminder of the convention: "instant t" = state after t turns.
+Zone (z, t) = drones in z at instant t. Connection (c, t) = drones
+crossing c between t and t+1.
 """
 
 import pytest
@@ -15,7 +15,7 @@ from fly_in.pathfinding.reservation_table import (
     ReservationTable,
 )
 
-# start - a - b - goal, con una rama start - big - goal y un restricted.
+# start - a - b - goal, with a branch start - big - goal and a restricted.
 #
 #   start ── a(cap 1) ── b(cap 1) ── goal
 #     │                               │
@@ -42,22 +42,22 @@ connection: r-goal
 
 @pytest.fixture
 def graph() -> Graph:
-    """Grafo de prueba compartido."""
+    """Shared test graph."""
     return MapParser.parse(MAP)[1]
 
 
 @pytest.fixture
 def table(graph: Graph) -> ReservationTable:
-    """Tabla vacía sobre el grafo de prueba."""
+    """Empty table over the test graph."""
     return ReservationTable(graph)
 
 
 def z(graph: Graph, name: str) -> Zone:
-    """Atajo: zona por nombre."""
+    """Shortcut: zone by name."""
     return graph.get_zone(name)
 
 
-# --- capacidad de zona -------------------------------------------------
+# --- zone capacity -----------------------------------------------------
 
 def test_two_drones_cannot_share_a_capacity_1_zone(
     graph: Graph, table: ReservationTable
@@ -103,7 +103,7 @@ def test_same_drone_cannot_be_counted_twice(
         table.reserve_wait(1, z(graph, "big"), 3)
 
 
-# --- capacidad de conexión ---------------------------------------------
+# --- connection capacity -----------------------------------------------
 
 def test_link_capacity_is_respected(
     graph: Graph, table: ReservationTable
@@ -125,7 +125,7 @@ def test_end_hub_is_unlimited_but_its_connection_is_not(
     assert not table.can_move(b, goal, 2)
 
 
-# --- movimientos normales ----------------------------------------------
+# --- normal moves ------------------------------------------------------
 
 def test_cost_1_move_occupies_link_at_t_and_zone_at_t_plus_1(
     graph: Graph, table: ReservationTable
@@ -143,8 +143,8 @@ def test_leaving_a_zone_frees_it_for_the_same_turn(
     graph: Graph, table: ReservationTable
 ) -> None:
     """Cap. VII.3: 'Drones moving out of a zone free up capacity for that
-    same turn'. D1 está en a (cap 1) en el instante 3 y sale hacia b; D2
-    puede entrar en a en ese mismo turno (llega en el instante 4)."""
+    same turn'. D1 is in a (cap 1) at instant 3 and leaves towards b; D2
+    can enter a on that same turn (it arrives at instant 4)."""
     start, a, b = z(graph, "start"), z(graph, "a"), z(graph, "b")
     table.reserve_wait(1, a, 3)
     table.reserve_move(1, a, b, 3)
@@ -159,7 +159,7 @@ def test_cannot_enter_a_zone_where_someone_stays(
     assert not table.can_move(start, a, 3)
 
 
-# --- restricted (coste 2) ----------------------------------------------
+# --- restricted (cost 2) -----------------------------------------------
 
 def test_cost_2_move_occupies_link_twice_and_zone_at_t_plus_2(
     graph: Graph, table: ReservationTable
@@ -185,9 +185,9 @@ def test_cost_2_move_occupies_no_zone_while_in_the_air(
 def test_restricted_link_is_busy_on_the_second_turn(
     graph: Graph, table: ReservationTable
 ) -> None:
-    """Lectura estricta de 'the drone occupies the connection during
-    transit': con capacidad 1, D2 no puede entrar mientras D1 sigue en el
-    aire, aunque D1 saliera un turno antes."""
+    """Strict reading of 'the drone occupies the connection during
+    transit': with capacity 1, D2 cannot enter while D1 is still in the
+    air, even if D1 left one turn earlier."""
     start, r = z(graph, "start"), z(graph, "r")
     table.reserve_move(1, start, r, 0)
     assert not table.can_move(start, r, 1)
@@ -215,7 +215,7 @@ def test_unconnected_zones_raise(
         table.can_move(z(graph, "a"), z(graph, "goal"), 0)
 
 
-# --- anti-cruce --------------------------------------------------------
+# --- anti-swap ---------------------------------------------------------
 
 def test_would_swap_detects_opposite_moves_on_the_same_turn(
     graph: Graph, table: ReservationTable
@@ -237,9 +237,9 @@ def test_would_swap_is_false_on_different_turns(
 
 
 def test_swap_is_detected_on_the_second_turn_of_a_restricted_move() -> None:
-    """D1 sale de x hacia r (restricted) en 0: está en el aire en 0 y 1.
-    D2 no puede salir de r hacia x en 1: se cruzarían en pleno vuelo, aunque
-    la conexión tenga capacidad 2."""
+    """D1 leaves x towards r (restricted) at 0: it is in the air at 0 and 1.
+    D2 cannot leave r towards x at 1: they would cross mid-flight, even
+    though the connection has capacity 2."""
     g = MapParser.parse(
         "nb_drones: 2\nstart_hub: s 0 0\nend_hub: e 3 0\n"
         "hub: x 1 0 [max_drones=2]\nhub: r 2 0 [zone=restricted]\n"
@@ -252,13 +252,13 @@ def test_swap_is_detected_on_the_second_turn_of_a_restricted_move() -> None:
     assert not table.can_move(z(g, "r"), z(g, "x"), 1)
 
 
-# --- atomicidad --------------------------------------------------------
+# --- atomicity ---------------------------------------------------------
 
 def test_failed_reservation_leaves_the_table_untouched(
     graph: Graph, table: ReservationTable
 ) -> None:
-    """Si la zona de aterrizaje está llena, no debe quedar reservada la
-    conexión 'a medias'."""
+    """If the landing zone is full, the connection must not be left
+    'half' reserved."""
     start, r = z(graph, "start"), z(graph, "r")
     conn = graph.connection_between(start, r)
     table.reserve_wait(9, r, 2)
@@ -296,9 +296,9 @@ def test_clear_from_drops_links_and_directions_too(
 def test_clear_from_keeps_drones_in_the_air(
     graph: Graph, table: ReservationTable
 ) -> None:
-    """D1 salió hacia r en el instante 4: está en el aire en 5 y aterriza en
-    6. Al replanificar en 5, su llegada no se puede borrar o otro dron podría
-    ocupar r y D1 no tendría dónde aterrizar."""
+    """D1 left towards r at instant 4: it is in the air at 5 and lands at
+    6. When replanning at 5, its arrival cannot be erased or another drone
+    could take r and D1 would have nowhere to land."""
     start, r, a = z(graph, "start"), z(graph, "r"), z(graph, "a")
     conn = graph.connection_between(start, r)
     table.reserve_move(1, start, r, 4)
@@ -345,4 +345,4 @@ def test_release_drops_links_and_directions_too(
     assert table.link_occupants(conn, 6) == []
     assert not table.would_swap(r, start, 5)
     assert table.zone_occupants(r, 7) == []
-    table.reserve_move(2, start, r, 5)  # vuelve a caber
+    table.reserve_move(2, start, r, 5)  # it fits again

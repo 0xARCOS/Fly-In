@@ -1,1 +1,1 @@
-"""Modelo de dominio: zonas, conexiones, grafo y errores."""
+"""Domain model: zones, connections, graph and errors."""

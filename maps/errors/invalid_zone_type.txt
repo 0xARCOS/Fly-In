@@ -1,4 +1,4 @@
-# zone=invalido no esta en el set permitido
+# zone=invalido is not in the allowed set
 nb_drones: 1
 start_hub: start 0 0
 end_hub: goal 2 0

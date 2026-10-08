@@ -1,13 +1,13 @@
 # SP08 contado de principio a fin
 
-Continúa la historia de [`08-narrativa-sp06-sp07.md`](./SP06-SP07-narrativa.md).
+Continúa la historia de [`SP06-SP07-narrativa.md`](./SP06-SP07-narrativa.md).
 Aquella terminaba con rutas **planificadas**: cada dron sabía qué haría en
 cada instante de la ventana, y la tabla de reservas garantizaba que esos
 planes no chocaban. Este documento cuenta cómo esos planes se convierten en
 una **simulación**: quién mueve a los drones, cuándo se vuelve a planificar,
 qué pasa con un dron en el aire y cómo se sabe que ningún turno ha roto una
 regla. Como en la anterior, no es una guía de pasos (eso es
-[`SP08-drone-y-simulador.md`](../../docs/build/SP08-drone-y-simulador.md)): explica
+[`SP08-drone-y-simulador.md`](../build/SP08-drone-y-simulador.md)): explica
 qué regla del subject obliga a que exista cada pieza y cómo se nota en la
 ejecución.
 
@@ -16,7 +16,7 @@ ejecución.
 > `errors.py`) y cubierto por
 > [`test/test_simulator.py`](../../test/test_simulator.py). `main.py` ya ejecuta la
 > simulación e imprime el número de turnos; la salida con el formato exacto del
-> subject llega en [SP09](../../docs/build/SP09-formato-salida.md). Todas las trazas de
+> subject llega en [SP09](../build/SP09-formato-salida.md). Todas las trazas de
 > este documento son salidas reales del programa, escritas con ese formato.
 
 ---

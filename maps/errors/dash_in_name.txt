@@ -1,4 +1,4 @@
-# Nombre de zona con guion -> los nombres no pueden llevar '-'
+# Zone name with a dash -> names cannot contain '-'
 nb_drones: 1
 start_hub: start 0 0
 end_hub: goal 2 0

@@ -69,7 +69,8 @@ turnos: 6 movimientos. Turno medio de entrega: (2 + 3 + 4) / 3 = 3. Esperas:
 ## Dónde se usa
 
 - `FlyIn.run`: con `--metrics` se imprimen en `stderr`, y siempre en el
-  resumen del log y en la tarjeta final de la ventana.
+  resumen final del log (`MISSION COMPLETE`); la ventana enseña solo los
+  turnos contra el objetivo.
 - `BenchmarkSuite.measure` (E.2).
 
 ## Verificación

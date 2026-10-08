@@ -1,11 +1,12 @@
-"""Qué hay en pantalla en cada turno, sin dibujar nada (SP10).
+"""What is on screen on each turn, without drawing anything (SP10).
 
-`Scene` traduce la grabación (`ReplayRecorder`) a lo que la ventana pygame
-necesita: dónde va cada dron en cada fotograma, qué conexiones se usan al
-pasar de un turno al siguiente y cuántos drones se han entregado. Se calcula
-una vez al empezar; durante la animación solo se consulta.
+`Scene` translates the recording (`ReplayRecorder`) into what the pygame
+window needs: where each drone goes in each frame, which connections are
+used going from one turn to the next and how many drones have been
+delivered. It is computed once at the start; during the animation it is
+only queried.
 
-No importa pygame, así que se prueba sin pantalla.
+It does not import pygame, so it is tested without a display.
 """
 
 from dataclasses import dataclass
@@ -15,21 +16,21 @@ from fly_in.models.graph import Graph
 from fly_in.simulation.simulator import Replan
 from fly_in.visualization.recorder import Position
 
-MapPoint = Tuple[float, float]   # coordenadas del fichero de mapa
+MapPoint = Tuple[float, float]   # coordinates from the map file
 
 
 @dataclass(frozen=True)
 class Spot:
-    """Dónde dibujar un dron en un fotograma.
+    """Where to draw a drone in a frame.
 
-    `anchor` es un punto del mapa: una zona, o el punto medio de una
-    conexión si el dron está en el aire. Si varios drones comparten zona,
-    `slot` y `crowd` dicen qué hueco del anillo alrededor de la zona le toca
-    (la ventana lo convierte en píxeles).
+    `anchor` is a map point: a zone, or the midpoint of a connection if
+    the drone is in the air. If several drones share a zone, `slot` and
+    `crowd` say which place of the ring around the zone it gets (the
+    window turns it into pixels).
     """
 
     anchor: MapPoint
-    zone: Optional[str]   # None en el aire o entregado
+    zone: Optional[str]   # None in the air or delivered
     airborne: bool
     delivered: bool
     slot: int = 0
@@ -38,7 +39,7 @@ class Spot:
 
 @dataclass(frozen=True)
 class LinkUse:
-    """Una conexión usada al pasar de un fotograma al siguiente."""
+    """A connection used going from one frame to the next."""
 
     origin: str
     target: str
@@ -46,7 +47,7 @@ class LinkUse:
 
 
 class Scene:
-    """Todos los fotogramas de una partida, listos para dibujarse."""
+    """Every frame of a run, ready to be drawn."""
 
     def __init__(
         self,
@@ -55,7 +56,7 @@ class Scene:
         lines: Sequence[str],
         replans: Sequence[Replan] = (),
     ) -> None:
-        """Precalcula los fotogramas de la grabación `positions`."""
+        """Precompute the frames of the recording `positions`."""
         assert graph.start_hub is not None and graph.end_hub is not None
         self.graph = graph
         self.start = graph.start_hub.name
@@ -85,15 +86,15 @@ class Scene:
             self._used(positions[k - 1], positions[k])
             for k in range(1, len(positions))
         ]
-        # Una replanificación en el instante T precede al turno T+1.
+        # A replan at instant T comes before turn T+1.
         self.replan_turns: Set[int] = {replan.turn + 1 for replan in replans}
 
     def is_hub(self, name: str) -> bool:
-        """¿Es start_hub o end_hub?"""
+        """Is it start_hub or end_hub?"""
         return name in (self.start, self.goal)
 
     def newly_delivered(self, frame: int) -> List[int]:
-        """Drones que se entregan justo en el fotograma `frame`."""
+        """Drones delivered exactly in frame `frame`."""
         if frame <= 0:
             return []
         before, now = self.spots[frame - 1], self.spots[frame]
@@ -102,10 +103,10 @@ class Scene:
             if now[drone].delivered and not before[drone].delivered
         ]
 
-    # --- internos ------------------------------------------------------
+    # --- internals -----------------------------------------------------
 
     def _spots(self, frame: Dict[str, Position]) -> Dict[int, Spot]:
-        """El sitio de cada dron en un fotograma."""
+        """The place of each drone in a frame."""
         crowds: Dict[str, List[int]] = {}
         for drone in self.ids:
             pos = frame[str(drone)]
@@ -130,7 +131,7 @@ class Scene:
         return spots
 
     def _occupants(self, frame: Dict[str, Position]) -> Dict[str, List[int]]:
-        """Qué drones hay en cada zona (los del aire no ocupan ninguna)."""
+        """Which drones are in each zone (those in the air occupy none)."""
         result: Dict[str, List[int]] = {}
         for drone in self.ids:
             pos = frame[str(drone)]
@@ -141,7 +142,7 @@ class Scene:
     def _used(
         self, before: Dict[str, Position], after: Dict[str, Position]
     ) -> List[LinkUse]:
-        """Conexiones recorridas del fotograma `before` al `after`."""
+        """Connections traveled from frame `before` to frame `after`."""
         used: List[LinkUse] = []
         for drone in self.ids:
             a, b = before[str(drone)], after[str(drone)]

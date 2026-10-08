@@ -5,7 +5,7 @@ MAP         ?= maps/valid/linear.txt
 ARGS        ?=
 
 .DEFAULT_GOAL := install
-.PHONY: install run bench debug lint lint-strict test clean
+.PHONY: install run capacity bench debug lint lint-strict test clean
 
 install:
 	python3 -m venv $(VENV)
@@ -14,6 +14,9 @@ install:
 
 run:
 	$(PYTHON) -m fly_in.main $(MAP) $(ARGS)
+
+capacity:
+	$(PYTHON) -m fly_in.main $(MAP) --capacity-info $(ARGS)
 
 bench:
 	$(PYTHON) -m fly_in.benchmarks

@@ -1,6 +1,31 @@
+diff --git a/Makefile b/Makefile
+index e90d0f6..0af2572 100644
+--- a/Makefile
++++ b/Makefile
+@@ -5,7 +5,7 @@ MAP         ?= maps/valid/linear.txt
+ ARGS        ?=
+ 
+ .DEFAULT_GOAL := install
+-.PHONY: install run bench debug lint lint-strict test clean
++.PHONY: install run capacity bench debug lint lint-strict test clean
+ 
+ install:
+ 	python3 -m venv $(VENV)
+@@ -15,6 +15,9 @@ install:
+ run:
+ 	$(PYTHON) -m fly_in.main $(MAP) $(ARGS)
+ 
++capacity:
++	$(PYTHON) -m fly_in.main $(MAP) --capacity-info $(ARGS)
++
+ bench:
+ 	$(PYTHON) -m fly_in.benchmarks
+ 
+diff --git a/fly_in/main.py b/fly_in/main.py
+index ba6d975..02b356c 100644
 --- a/fly_in/main.py
 +++ b/fly_in/main.py
-@@ -20,7 +20,12 @@
+@@ -20,7 +20,12 @@ from fly_in.output.formatter import OutputFormatter
  from fly_in.pathfinding.abstract_distance import AbstractDistance
  from fly_in.simulation.errors import SimulationError
  from fly_in.simulation.metrics import Metrics
@@ -14,7 +39,7 @@
  from fly_in.visualization.palette import Painter
  from fly_in.visualization.recorder import ReplayRecorder
  from fly_in.visualization.session import (
-@@ -88,6 +93,10 @@
+@@ -88,6 +93,10 @@ class FlyIn:
              "-d", "--delay", type=FlyIn.non_negative_float, default=None,
              help="Seconds per turn (default: window 0.8, log 0.25)"
          )
@@ -25,27 +50,44 @@
          return parser
  
      @staticmethod
-@@ -185,7 +194,12 @@
+@@ -185,7 +194,11 @@ class FlyIn:
  
          sim = Simulator(graph, nb_drones, args.window)
          recorder = ReplayRecorder(sim.drones)
 -        trace = sim.run(recorder)
++        capacity = CapacityObserver(graph)
 +        observer: SimulationObserver = recorder
 +        if args.capacity_info:
-+            observer = ObserverGroup(
-+                recorder, CapacityObserver(graph, sys.stderr)
-+            )
++            observer = ObserverGroup(recorder, capacity)
 +        trace = sim.run(observer)
          metrics = Metrics.from_trace(trace, nb_drones, sim.elapsed)
  
          if view in ("window", "log"):
+@@ -195,8 +208,13 @@ class FlyIn:
+                       sim.replans, args.map_file.name, args.window, target)
+             Session(view, run, paint, sys.stderr, pace).play()
+ 
+-        for line in OutputFormatter.format_trace(trace):
++        for index, line in enumerate(OutputFormatter.format_trace(trace)):
+             print(line)
++            if args.capacity_info:
++                # Flush stdout first so that, on a terminal, each capacity
++                # line ends up right below the line of its turn.
++                sys.stdout.flush()
++                print(capacity.lines[index], file=sys.stderr)
+         sys.stdout.flush()
+ 
+         if args.metrics:
+diff --git b/fly_in/simulation/capacity_observer.py b/fly_in/simulation/capacity_observer.py
+new file mode 100644
+index 0000000..5a07b34
 --- /dev/null
 +++ b/fly_in/simulation/capacity_observer.py
-@@ -0,0 +1,47 @@
-+"""Ocupación de zonas y conexiones turno a turno (--capacity-info)."""
+@@ -0,0 +1,49 @@
++"""Zone and connection usage, turn by turn (--capacity-info)."""
 +
 +from collections import Counter
-+from typing import Sequence, TextIO
++from typing import List, Sequence
 +
 +from fly_in.models.graph import Graph
 +from fly_in.models.zone import UNLIMITED
@@ -54,20 +96,22 @@
 +
 +
 +class CapacityObserver:
-+    """Observador que escribe una línea de ocupación tras cada turno.
++    """Observer that records one usage line after each turn.
 +
-+    Cumple el Protocol `SimulationObserver` solo con tener `on_turn`.
++    It satisfies the `SimulationObserver` Protocol just by having
++    `on_turn`. The lines are kept in `lines` (one per turn) and `FlyIn.run`
++    writes them to stderr next to the stdout line of each turn.
 +    """
 +
-+    def __init__(self, graph: Graph, stream: TextIO) -> None:
-+        """Escribe en `stream`: stderr, porque stdout es del subject."""
++    def __init__(self, graph: Graph) -> None:
++        """No lines yet."""
 +        self.graph = graph
-+        self.stream = stream
++        self.lines: List[str] = []
 +
 +    def on_turn(
 +        self, turn: int, moves: Sequence[Move], drones: Sequence[Drone]
 +    ) -> None:
-+        """Zonas ocupadas tras el turno y conexiones usadas durante él."""
++        """Zones occupied after the turn and connections used during it."""
 +        zones = Counter(
 +            drone.current_zone.name for drone in drones
 +            if not drone.in_transit
@@ -83,19 +127,25 @@
 +            f"Connection {name}: {count}/{capacity[name]} capacity used"
 +            for name, count in sorted(links.items())
 +        ]
-+        print(f"T{turn} " + ", ".join(parts), file=self.stream)
++        self.lines.append(f"T{turn} " + ", ".join(parts))
 +
 +    @staticmethod
 +    def limit(max_drones: float) -> str:
-+        """`max_drones` como texto: 'inf' en start_hub y end_hub."""
++        """`max_drones` as text: 'inf' on start_hub and end_hub."""
 +        return "inf" if max_drones == UNLIMITED else str(int(max_drones))
+diff --git b/test/test_capacity_observer.py b/test/test_capacity_observer.py
+new file mode 100644
+index 0000000..97cd8c7
 --- /dev/null
 +++ b/test/test_capacity_observer.py
-@@ -0,0 +1,45 @@
-+import io
+@@ -0,0 +1,70 @@
++"""Tests for --capacity-info: one line per turn, never over the limit."""
++
 +import re
++import subprocess
++import sys
 +from pathlib import Path
-+from typing import List, Tuple
++from typing import List, Sequence, Tuple
 +
 +import pytest
 +
@@ -103,15 +153,16 @@
 +from fly_in.simulation.capacity_observer import CapacityObserver
 +from fly_in.simulation.simulator import Move, Simulator
 +
-+MAPS_DIR = Path(__file__).resolve().parent.parent / "maps"
++ROOT = Path(__file__).resolve().parent.parent
++MAPS_DIR = ROOT / "maps"
 +OFFICIAL = sorted((MAPS_DIR / "oficial_maps").rglob("*.txt"))
 +
 +
-+def watch(path: Path) -> Tuple[List[List[Move]], List[str]]:
++def watch(path: Path) -> Tuple[Sequence[Sequence[Move]], List[str]]:
 +    nb_drones, graph = MapParser.parse(path.read_text())
-+    stream = io.StringIO()
-+    trace = Simulator(graph, nb_drones).run(CapacityObserver(graph, stream))
-+    return trace, stream.getvalue().splitlines()
++    observer = CapacityObserver(graph)
++    trace = Simulator(graph, nb_drones).run(observer)
++    return trace, observer.lines
 +
 +
 +def test_one_line_per_turn() -> None:
@@ -131,9 +182,30 @@
 +    )
 +
 +
++def test_restricted_transit_uses_the_connection_twice() -> None:
++    _, lines = watch(MAPS_DIR / "valid" / "restricted_chain.txt")
++    assert lines[0] == "T1 Connection start-r1: 1/1 capacity used"
++    assert lines[1].endswith("Connection start-r1: 1/1 capacity used")
++
++
 +@pytest.mark.parametrize("path", OFFICIAL, ids=lambda p: p.name)
 +def test_usage_never_exceeds_capacity(path: Path) -> None:
 +    _, lines = watch(path)
 +    for line in lines:
 +        for used, limit in re.findall(r": (\d+)/(\d+) ", line):
 +            assert int(used) <= int(limit), line
++
++
++def test_flag_keeps_stdout_and_adds_stderr() -> None:
++    result = subprocess.run(
++        [sys.executable, "-m", "fly_in.main", "maps/valid/bottleneck.txt",
++         "--capacity-info", "-q"],
++        cwd=ROOT, capture_output=True, text=True, timeout=30,
++    )
++    assert result.returncode == 0
++    assert result.stdout.splitlines() == [
++        "D1-narrow", "D1-goal D2-narrow", "D2-goal D3-narrow", "D3-goal",
++    ]
++    assert [line[:3] for line in result.stderr.splitlines()] == [
++        "T1 ", "T2 ", "T3 ", "T4 ",
++    ]

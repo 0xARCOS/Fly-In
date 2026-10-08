@@ -82,8 +82,8 @@ regla deja un solo sitio donde comprobarlos.
 
 ```console
 $ make install
-$ make lint && make lint-strict      # Success: no issues found in 40 source files
-$ make test                          # 411 passed
+$ make lint && make lint-strict      # Success: no issues found in 42 source files
+$ make test                          # 425 passed
 $ make clean
 ```
 

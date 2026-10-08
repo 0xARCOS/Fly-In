@@ -1,4 +1,4 @@
-"""Tests de las métricas y los benchmarks (SP11)."""
+"""Tests for the metrics and the benchmarks (SP11)."""
 
 from pathlib import Path
 
@@ -18,13 +18,13 @@ MAPS_DIR = Path(__file__).resolve().parent.parent / "maps"
 
 
 def metrics_of(relative: str) -> Metrics:
-    """Métricas de un mapa con la configuración por defecto."""
+    """Metrics of a map with the default configuration."""
     nb_drones, graph = MapParser.parse((MAPS_DIR / relative).read_text())
     return Metrics.from_trace(Simulator(graph, nb_drones).run(), nb_drones)
 
 
 def test_bottleneck_metrics_by_hand() -> None:
-    # D1 entrega en 2, D2 en 3, D3 en 4. Cada uno se mueve 2 turnos.
+    # D1 delivers at 2, D2 at 3, D3 at 4. Each one moves for 2 turns.
     m = metrics_of("valid/bottleneck.txt")
     assert m.turns == 4 and m.drones == 3
     assert m.total_moves == 6

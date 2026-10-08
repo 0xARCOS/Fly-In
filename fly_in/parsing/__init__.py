@@ -1,1 +1,1 @@
-"""Parseo del formato de mapa."""
+"""Parsing of the map format."""

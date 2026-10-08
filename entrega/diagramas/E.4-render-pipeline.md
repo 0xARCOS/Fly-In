@@ -8,7 +8,8 @@ enseña lo grabado**, y la visualización no calcula nada.
 
 ```mermaid
 flowchart TD
-    SIM["Simulator.run(recorder)<br/>milisegundos"] -->|"on_turn tras cada turno"| REC["ReplayRecorder<br/>positions[k], lines[k]"]
+    SIM["Simulator.run(observer)<br/>milisegundos"] -->|"on_turn tras cada turno"| REC["ReplayRecorder<br/>positions[k], lines[k]"]
+    SIM -.->|"solo con --capacity-info<br/>(ObserverGroup)"| CAP["CapacityObserver<br/>lines[k]"]
     SIM --> TR["trace: List[List[Move]]"]
     TR --> MET["Metrics.from_trace"]
     REC --> RUN["Run (dataclass)<br/>graph, trace, recorder, metrics, replans, …"]
@@ -19,6 +20,7 @@ flowchart TD
     SC --> PV["PygameView<br/>la ventana"]
     SES --> LOG["EventLog<br/>stderr"]
     TR --> OUT["OutputFormatter → stdout<br/>(al final)"]
+    CAP -.->|"intercaladas con stdout"| ERR["stderr"]
 ```
 
 ## `ReplayRecorder`: un fotograma por turno
@@ -44,11 +46,16 @@ convierte la grabación en listas indexadas por fotograma:
 | `points` | Coordenadas `(x, y)` de cada zona |
 | `spots[k][dron]` | Un `Spot`: el punto donde va (centro de la zona, su hueco en un anillo si comparte zona o es un hub, o el punto medio de la conexión si está en el aire) |
 | `occupants[k]` | Qué drones hay en cada zona |
+| `delivered[k]` | Drones entregados en el fotograma `k` |
 | `used[k]` | `LinkUse`: qué conexiones se recorren de `k-1` a `k`, en qué sentido y con qué dron |
-| `delivered[k]`, `airborne[k]` | Contadores |
+| `airborne[k]` | Drones en el aire |
 | `replan_turns` | Turnos que empiezan con una replanificación |
 
-y ofrece `is_hub(nombre)` y `newly_delivered(k)`.
+y ofrece `is_hub(nombre)` y `newly_delivered(k)`. La ventana mínima actual
+usa `points`, `spots`, `occupants`, `delivered`, `ids`, `last` e `is_hub`;
+`used`, `airborne`, `replan_turns` y `newly_delivered` los usaba la versión
+anterior (flujo de luz, chispas y anillo de replan) y se conservan porque
+están probados en `test/test_session.py` y no cuestan nada.
 
 ## `Session`: la reproducción
 
@@ -60,9 +67,9 @@ flowchart TD
     N -->|"log"| PL
     PW --> IMP{"¿se importa pygame_view<br/>y open() funciona?"}
     IMP -->|"no"| NOTE["aviso en el log"] --> PL
-    IMP -->|"sí"| CD["cuenta atrás 3-2-1-GO<br/>en el log y en la ventana"]
+    IMP -->|"sí"| CD["cuenta atrás 3-2-1-GO<br/>en el log y en la línea de estado"]
     CD --> PL2["_play_log(window)"]
-    PL2 --> FIN["log.finish(métricas)<br/>window.finish: tarjeta final (≤ 20 s)"]
+    PL2 --> FIN["log.finish(métricas)<br/>window.finish: 'done in N turns' (≤ 20 s)"]
     PL["_play_log()"] --> FIN2["log.finish(métricas)"]
 ```
 
@@ -73,22 +80,20 @@ las dos cosas las hace el mismo bucle en un solo hilo, van a la par sin
 sincronización. Si el usuario cierra la ventana, se avisa una vez y el log
 sigue solo.
 
-## `PygameView._paint(k, progreso)`: un fotograma
+## `PygameView._paint(k, progreso, status)`: un fotograma
 
 ```mermaid
 flowchart LR
-    A["fondo precalculado"] --> B["estrellas"]
-    B --> C["conexiones<br/>(flujo de luz en las usadas)"]
-    C --> D["zonas<br/>(hexágonos, pips de capacidad)"]
+    A["fondo blanco"] --> C["conexiones<br/>(a trazos hacia restricted)"]
+    C --> D["zonas<br/>(círculo pastel, nombre, ocupados/max)"]
     D --> E["drones<br/>(interpolados entre k-1 y k)"]
-    E --> F["efectos<br/>(chispas, +1, anillo de replan)"]
-    F --> G["etiquetas"]
-    G --> H["tarjeta, si la hay"]
-    H --> I["pygame.display.flip()"]
+    E --> F["línea de estado<br/>(mapa, turno, entregados, teclas)"]
+    F --> I["pygame.display.flip()"]
 ```
 
 `play_turn(k, segundos)` llama a `_paint` a 60 fotogramas por segundo con el
-progreso de 0 a 1 (curva cúbica); `SPACE` congela el progreso.
+progreso de 0 a 1 (*smoothstep*); `SPACE` congela el progreso. El detalle de
+cada elemento está en [`fase-visual.md`](../defensa/fase-visual.md).
 
 ## `EventLog`: el log de la terminal
 

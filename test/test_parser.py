@@ -1,4 +1,4 @@
-"""Tests del parser de mapas (SP02) y de las invariantes de Graph (SP01)."""
+"""Tests for the map parser (SP02) and the Graph invariants (SP01)."""
 
 from pathlib import Path
 
@@ -14,11 +14,11 @@ HEADER = "nb_drones: 2\nstart_hub: s 0 0\nend_hub: e 2 0\n"
 
 
 def parse_file(relative: str) -> tuple[int, Graph]:
-    """Parsea un mapa de la carpeta maps/."""
+    """Parse a map from the maps/ folder."""
     return MapParser.parse((MAPS_DIR / relative).read_text())
 
 
-# --- mapas de la carpeta maps/ -----------------------------------------
+# --- maps from the maps/ folder ----------------------------------------
 
 @pytest.mark.parametrize(
     "path",
@@ -74,9 +74,9 @@ def test_parse_error_reports_line_number_and_content() -> None:
     assert str(info.value).startswith("Line 5:")
 
 
-# --- archivo en conjunto ---------------------------------------------
+# --- the file as a whole --------------------------------------------
 
-@pytest.mark.parametrize("content", ["", "\n\n", "# solo\n  # comentarios\n"])
+@pytest.mark.parametrize("content", ["", "\n\n", "# only\n  # comments\n"])
 def test_empty_map_is_a_map_error_not_a_crash(content: str) -> None:
     with pytest.raises(MapValidationError):
         MapParser.parse(content)
@@ -112,7 +112,7 @@ def test_windows_line_endings_are_accepted() -> None:
     assert len(graph.connections) == 1
 
 
-# --- líneas de zona ----------------------------------------------------
+# --- zone lines --------------------------------------------------------
 
 def test_zone_defaults() -> None:
     _, graph = MapParser.parse(HEADER + "hub: a 1 1\n")
@@ -203,7 +203,7 @@ def test_start_and_end_cannot_be_blocked(role: str) -> None:
         )
 
 
-# --- líneas de conexión ------------------------------------------------
+# --- connection lines --------------------------------------------------
 
 def test_connection_default_and_explicit_capacity() -> None:
     _, graph = MapParser.parse(
@@ -252,7 +252,7 @@ def test_connection_must_follow_both_zone_definitions() -> None:
 # --- Graph -----------------------------------------------------------
 
 def small_graph() -> Graph:
-    """s - a - e, más una zona suelta 'lonely'."""
+    """s - a - e, plus a loose zone 'lonely'."""
     graph = Graph()
     graph.add_zone(Zone("s", 0, 0), "start_hub")
     graph.add_zone(Zone("a", 1, 0), "hub")

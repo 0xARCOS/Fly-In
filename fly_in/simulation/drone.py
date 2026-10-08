@@ -1,4 +1,4 @@
-"""El dron: posición, estado y la ruta que le queda por ejecutar (SP08)."""
+"""The drone: position, state and the rest of its route (SP08)."""
 
 from enum import Enum, auto
 from typing import List, Optional
@@ -10,24 +10,24 @@ from fly_in.simulation.errors import SimulationError
 
 
 class DroneState(Enum):
-    """Qué hizo el dron en el último turno ejecutado."""
+    """What the drone did in the last executed turn."""
 
-    WAITING = auto()      # en una zona, sin movimiento este turno
-    MOVING = auto()       # se movió a una zona adyacente este turno
-    IN_TRANSIT = auto()   # en una conexión hacia una restricted: llega ya
-    ARRIVED = auto()      # en end_hub: entregado, deja de rastrearse
+    WAITING = auto()      # in a zone, no move this turn
+    MOVING = auto()       # moved to an adjacent zone this turn
+    IN_TRANSIT = auto()   # on a connection towards a restricted zone
+    ARRIVED = auto()      # at end_hub: delivered, no longer tracked
 
 
 class Drone:
-    """Un agente que recorre el grafo de start_hub a end_hub.
+    """An agent that travels the graph from start_hub to end_hub.
 
-    Mientras está IN_TRANSIT, `current_zone` sigue siendo la zona de la que
-    salió y `transit_connection` la conexión en la que está: no ocupa
-    ninguna zona hasta aterrizar.
+    While IN_TRANSIT, `current_zone` is still the zone it left and
+    `transit_connection` is the connection it is on: it occupies no zone
+    until it lands.
     """
 
     def __init__(self, drone_id: int, start: Zone) -> None:
-        """Crea el dron `drone_id` parado en `start`."""
+        """Create drone `drone_id` standing at `start`."""
         self.id = drone_id
         self.current_zone = start
         self.state = DroneState.WAITING
@@ -36,21 +36,21 @@ class Drone:
 
     @property
     def is_active(self) -> bool:
-        """True mientras no se haya entregado."""
+        """True until it has been delivered."""
         return self.state is not DroneState.ARRIVED
 
     @property
     def in_transit(self) -> bool:
-        """True si está en el aire, camino de una zona restricted."""
+        """True if it is in the air, on its way to a restricted zone."""
         return self.state is DroneState.IN_TRANSIT
 
     def next_step(self, turn: int) -> Optional[Step]:
-        """Paso que el dron empieza en el turno `turn` (sale del instante
-        `turn`), o None si su ruta se ha agotado.
+        """Step the drone starts on turn `turn` (it leaves at instant
+        `turn`), or None if its route is exhausted.
 
         Raises:
-            SimulationError: Si el siguiente paso no empieza en `turn`: la
-                ruta y el reloj de la simulación se han desincronizado.
+            SimulationError: If the next step does not start at `turn`: the
+                route and the simulation clock are out of sync.
         """
         if not self.path:
             return None
@@ -64,7 +64,7 @@ class Drone:
         return step
 
     def __repr__(self) -> str:
-        """Representación legible para depurar."""
+        """Readable representation for debugging."""
         where = (
             self.transit_connection.name
             if self.transit_connection is not None

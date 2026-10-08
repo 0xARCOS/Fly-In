@@ -2,7 +2,9 @@
 
 Todo el color sale de [`fly_in/visualization/palette.py`](../../fly_in/visualization/palette.py):
 `Palette` convierte nombres e ids en RGB, y `Painter` convierte RGB en códigos
-ANSI para la terminal. La ventana pygame usa los RGB directamente.
+ANSI para la terminal. La ventana pygame usa los RGB directamente, con dos
+ajustes para el fondo blanco: las zonas se aclaran a pastel y los drones muy
+claros se oscurecen.
 
 ## El color de una zona: `Palette.resolve(name, frame)`
 
@@ -14,15 +16,18 @@ flowchart TD
     K --> T{"¿en NAMED? (~30 nombres)"}
     T -->|"sí"| RGB1(["ese RGB"])
     T -->|"no"| RB{"¿rainbow?"}
-    RB -->|"sí"| RGB2(["hue(frame × 0.07)<br/>cambia con cada fotograma"])
+    RB -->|"sí"| RGB2(["hue(frame × 0.07)<br/>cambia con el fotograma"])
     RB -->|"no"| HX{"¿#rrggbb?"}
     HX -->|"sí"| RGB3(["ese RGB"])
     HX -->|"no"| HS(["hue(sha256(nombre)[0] / 256)<br/>estable entre ejecuciones"])
 ```
 
 Ninguna rama lanza una excepción: el subject admite cualquier palabra como
-color (Cap. VI). La ventana, además, aclara los colores muy oscuros
-(`PygameView._visible`) para que se vean sobre el fondo.
+color (Cap. VI). La ventana mínima llama a `resolve` sin `frame`, así que
+`rainbow` se ve con un tono fijo; el resultado se mezcla un 62 % con blanco
+(`PASTEL`) para que la zona quede como fondo y el dron destaque encima. Sin
+`color=`, la ventana usa el color de su tipo (`TYPE_COLOR`) o el de
+`start_hub` (verde) y `end_hub` (azul).
 
 ## El color de un dron: `Palette.drone_color(id)`
 
@@ -49,9 +54,12 @@ D8 los tonos avanzan 0,618 vueltas (el ángulo áureo) de un id al siguiente:
 | D8 | (255, 89, 89) |
 | D9 | (89, 137, 255) |
 
-Es la **misma función** en la ventana (dron, estela, flujo de la conexión) y en
-el log (leyenda, etiqueta de cada movimiento, lista de quién espera), así que
-cada dron tiene un solo color en todas partes.
+Es la **misma función** en la ventana (el punto del dron) y en el log
+(leyenda, etiqueta de cada movimiento, lista de quién espera), así que cada
+dron tiene un solo color en todas partes. Sobre el fondo blanco de la
+ventana, `PygameView._on_white` oscurece los colores con luminancia relativa
+mayor de 0,55 (sobre todo el amarillo de D6) para que el dron y su número se
+lean; el tono no cambia.
 
 ## De RGB a la terminal: `Painter`
 

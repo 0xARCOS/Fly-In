@@ -1,9 +1,9 @@
-"""Errores de la simulación."""
+"""Simulation errors."""
 
 
 class SimulationError(Exception):
-    """La simulación no pudo completarse.
+    """The simulation could not be completed.
 
-    El mensaje dice qué pasó y con qué drones: "no converge tras 340
-    turnos; D3 en narrow" es depurable, un cuelgue no.
+    The message says what happened and to which drones: "does not converge
+    after 340 turns; D3 at narrow" can be debugged, a hang cannot.
     """

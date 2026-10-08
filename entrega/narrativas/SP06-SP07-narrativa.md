@@ -1,9 +1,9 @@
 # SP06 y SP07 contados de principio a fin
 
-Los documentos de [`build/`](../../docs/build/) son guías de construcción: pasos,
+Los documentos de [`build/`](../build/) son guías de construcción: pasos,
 contratos, avisos y tests. Este es otra cosa. Cuenta **como una sola historia**
-lo que hacen la tabla de reservas ([SP06](../../docs/build/SP06-tabla-reservas.md)) y la
-búsqueda cooperativa ([SP07](../../docs/build/SP07-whca.md)): qué regla del subject
+lo que hacen la tabla de reservas ([SP06](../build/SP06-tabla-reservas.md)) y la
+búsqueda cooperativa ([SP07](../build/SP07-whca.md)): qué regla del subject
 obliga a que exista cada pieza, por qué cada función tiene la forma que tiene y
 qué cambia en la ejecución del programa por culpa de ella.
 
@@ -14,7 +14,7 @@ qué cambia en la ejecución del programa por culpa de ella.
 > está implementado en
 > [`fly_in/pathfinding/whca.py`](../../fly_in/pathfinding/whca.py) y cubierto por
 > [`test/test_whca.py`](../../test/test_whca.py). La historia continúa con el
-> simulador en [`09-narrativa-sp08.md`](./SP08-narrativa.md).
+> simulador en [`SP08-narrativa.md`](./SP08-narrativa.md).
 
 ---
 
@@ -41,7 +41,7 @@ otro: una tabla sin nadie que la consulte es un diccionario muerto, y una
 búsqueda sin tabla es otra vez Dijkstra.
 
 La idea que los une viene del artículo de Silver (2005) y está explicada en
-[`04-algoritmo.md`](../../docs/04-algoritmo.md): si el estado de la búsqueda deja de ser
+[`04-algoritmo.md`](../referencia/04-algoritmo.md): si el estado de la búsqueda deja de ser
 `zona` y pasa a ser `(zona, turno)`, entonces "el dron 1 estará en `narrow` en
 el turno 1" es un obstáculo igual que una zona `blocked`, solo que dura un
 turno. La búsqueda no tiene que *detectar* colisiones: las colisiones
@@ -551,6 +551,6 @@ implementaciones. Preferimos la regla correcta al número más bajo.
 | Grabar antes del siguiente | Que cada dron vea a los anteriores | Todos los drones con la misma ruta |
 | Orden de prioridad | Decidir quién se lleva las mejores reservas | Resultado dependiente de un detalle arbitrario |
 
-Continúa en [`09-narrativa-sp08.md`](./SP08-narrativa.md): cómo el
+Continúa en [`SP08-narrativa.md`](./SP08-narrativa.md): cómo el
 simulador convierte estas rutas en turnos, y qué pasa con ellas en los mapas
 oficiales.

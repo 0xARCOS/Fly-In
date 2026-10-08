@@ -1,6 +1,6 @@
 # SP09 contado de principio a fin
 
-Continúa [`09-narrativa-sp08.md`](./SP08-narrativa.md). El simulador ya
+Continúa [`SP08-narrativa.md`](./SP08-narrativa.md). El simulador ya
 sabía mover a todos los drones sin romper ninguna regla y devolvía una
 **traza**: una lista de `Move` por turno. Este documento cuenta el último paso
 antes de que alguien de fuera pueda juzgar el programa: convertir esa traza en
@@ -11,7 +11,7 @@ el único cuyo resultado se compara **carácter a carácter**.
 > [`fly_in/output/formatter.py`](../../fly_in/output/formatter.py), cableado en
 > [`fly_in/main.py`](../../fly_in/main.py) y cubierto por
 > [`test/test_output_format.py`](../../test/test_output_format.py). La guía de
-> pasos es [`SP09-formato-salida.md`](../../docs/build/SP09-formato-salida.md).
+> pasos es [`SP09-formato-salida.md`](../build/SP09-formato-salida.md).
 
 ---
 
@@ -147,5 +147,5 @@ llegadas, saldrían tres líneas y la cuenta de turnos sería falsa.
 | `format_trace` | Una línea por turno; sin líneas vacías | Cap. VII.5 y VII.6 (la métrica) |
 | `main.py` + `Makefile` | `stdout` solo con líneas de turno; todo lo demás a `stderr` | Cap. VII.5 |
 
-Continúa en [`11-narrativa-sp10.md`](./SP10-narrativa.md): cómo se ve todo
+Continúa en [`SP10-narrativa.md`](./SP10-narrativa.md): cómo se ve todo
 esto en pantalla.

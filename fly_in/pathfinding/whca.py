@@ -1,13 +1,12 @@
-"""Búsqueda cooperativa en espacio-tiempo: WHCA* (SP07).
+"""Cooperative space-time search: WHCA* (SP07).
 
-El estado de búsqueda ya no es `zona` sino `(zona, turno)`. Las reservas de
-los drones que planificaron antes son obstáculos que existen solo en ciertos
-turnos, y la búsqueda los esquiva sola: una colisión simplemente no está
-entre los estados alcanzables.
+The search state is no longer `zone` but `(zone, turn)`. The reservations
+of the drones that planned earlier are obstacles that exist only on some
+turns, and the search avoids them on its own: a collision is simply not
+among the reachable states.
 
-Usa la convención de tiempo de ReservationTable (SP06): el "instante t" es
-el estado tras t turnos; un movimiento que sale en T con coste c llega en
-T+c.
+It uses the time convention of ReservationTable (SP06): "instant t" is the
+state after t turns; a move that leaves at T with cost c arrives at T+c.
 """
 
 import heapq
@@ -33,63 +32,63 @@ DEFAULT_WINDOW = 8
 
 
 class DroneLike(Protocol):
-    """Lo único que la búsqueda necesita saber de un dron.
+    """All the search needs to know about a drone.
 
-    El `Drone` de SP08 lo cumple sin heredar de nada; los tests usan un
-    dataclass mínimo.
+    The `Drone` of SP08 satisfies it without inheriting from anything; the
+    tests use a minimal dataclass.
     """
 
     @property
     def id(self) -> int:
-        """Identificador del dron (el N de `DN` en la salida)."""
+        """Drone identifier (the N of `DN` in the output)."""
         ...
 
     @property
     def current_zone(self) -> Zone:
-        """Zona en la que está el dron al empezar a planificar."""
+        """Zone the drone is in when planning starts."""
         ...
 
 
-# Recibe los drones a planificar y el turno actual; devuelve el orden en
-# que planifican. Quien va primero se lleva las mejores reservas.
+# Takes the drones to plan and the current turn; returns the order in which
+# they plan. Whoever goes first gets the best reservations.
 PlanningOrder = Callable[[Sequence[DroneLike], int], List[DroneLike]]
 
 
 @dataclass(frozen=True, order=True)
 class SearchNode:
-    """Un estado (zona, turno) en la cola de prioridad de A*.
+    """A (zone, turn) state in the A* priority queue.
 
-    El orden de los campos ES el orden del heap: primero `f`, y ante empate
-    la ruta con más zonas priority (igual que Dijkstra en SP04), luego `g`,
-    `turn` y por último `tie`, un contador que desempata a favor del nodo
-    descubierto antes. `zone_name` va detrás de `tie`, así que nunca llega
-    a compararse.
+    The order of the fields IS the heap order: first `f`, and on a tie the
+    route with more priority zones (same as Dijkstra in SP04), then `g`,
+    `turn` and finally `tie`, a counter that breaks ties in favor of the
+    node discovered first. `zone_name` comes after `tie`, so it is never
+    compared.
     """
 
     f: int              # g + h
-    neg_priority: int   # -(zonas priority en la ruta): más es mejor
-    g: int              # turnos gastados desde el inicio de la ventana
-    turn: int           # instante absoluto de simulación
-    tie: int            # contador incremental, desempate estable
+    neg_priority: int   # -(priority zones on the route): more is better
+    g: int              # turns spent since the start of the window
+    turn: int           # absolute simulation instant
+    tie: int            # incremental counter, stable tie-break
     zone_name: str
 
 
 @dataclass(frozen=True)
 class Step:
-    """Un paso de la ruta planificada."""
+    """One step of the planned route."""
 
-    zone: Zone                        # dónde acaba este paso
-    arrival_turn: int                 # instante absoluto de llegada
-    connection: Optional[Connection]  # None si es una espera en el sitio
-    cost: int                         # 1, o 2 si el destino es restricted
+    zone: Zone                        # where this step ends
+    arrival_turn: int                 # absolute arrival instant
+    connection: Optional[Connection]  # None for a wait in place
+    cost: int                         # 1, or 2 if the target is restricted
 
 
 class WhcaPathfinder:
     """Windowed Hierarchical Cooperative A* (Silver, 2005).
 
-    Busca en espacio-tiempo (zona, turno) respetando las reservas de los
-    drones que ya planificaron, dentro de una ventana de `window` turnos.
-    Más allá de la ventana confía en la heurística abstracta.
+    Searches in space-time (zone, turn) honoring the reservations of the
+    drones that already planned, within a window of `window` turns. Beyond
+    the window it trusts the abstract heuristic.
     """
 
     def __init__(
@@ -100,17 +99,17 @@ class WhcaPathfinder:
         window: int = DEFAULT_WINDOW,
         order: Optional[PlanningOrder] = None,
     ) -> None:
-        """Prepara el buscador.
+        """Set up the search.
 
         Args:
-            graph: Grafo del mapa (con end_hub).
-            heuristic: Distancias abstractas al end_hub (SP05).
-            table: Tabla de reservas compartida por todos los drones.
-            window: Turnos que se miran hacia delante cooperando.
-            order: Criterio de prioridad entre drones; por defecto, por id.
+            graph: Map graph (with end_hub).
+            heuristic: Abstract distances to end_hub (SP05).
+            table: Reservation table shared by every drone.
+            window: Turns looked ahead while cooperating.
+            order: Priority criterion between drones; by id by default.
 
         Raises:
-            ValueError: Si la ventana no es positiva o el grafo no tiene
+            ValueError: If the window is not positive or the graph has no
                 end_hub.
         """
         if window < 1:
@@ -131,20 +130,20 @@ class WhcaPathfinder:
     def plan(
         self, drones: Sequence[DroneLike], start_turn: int
     ) -> Dict[int, List[Step]]:
-        """Planifica y graba la ruta de cada dron, en orden de prioridad.
+        """Plan and record the route of each drone, in priority order.
 
-        Cada ruta se graba en la tabla ANTES de planificar la siguiente: si
-        no, todos planificarían contra la misma tabla y chocarían.
+        Each route is written to the table BEFORE planning the next one:
+        otherwise they would all plan against the same table and collide.
 
-        Antes de empezar, cada dron reserva quedarse en su zona toda la
-        ventana (reserva provisional). Sin ella, quien planifica antes no
-        ve a quien aún no lo ha hecho y puede reservar entrar en su zona
-        cuando este no tiene por dónde salir. Cada dron cambia su reserva
-        provisional por su ruta real justo antes de buscarla, así que
-        siempre puede, como mínimo, esperar donde está.
+        Before starting, every drone reserves staying in its zone for the
+        whole window (provisional reservation). Without it, whoever plans
+        first does not see those who have not planned yet and may reserve
+        entering their zone when they have no way out. Each drone swaps its
+        provisional reservation for its real route right before searching
+        for it, so it can always, at the very least, wait where it is.
 
         Returns:
-            Ruta de cada dron, por id.
+            Route of each drone, by id.
         """
         ordered = self.order(drones, start_turn)
         for drone in ordered:
@@ -159,12 +158,12 @@ class WhcaPathfinder:
         return paths
 
     def find_path(self, drone: DroneLike, start_turn: int) -> List[Step]:
-        """Ruta del dron desde su posición actual, dentro de la ventana.
+        """Route of the drone from its current position, within the window.
 
         Returns:
-            Lista de pasos, posiblemente parcial (hasta el borde de la
-            ventana). Nunca vacía salvo que el dron ya esté en end_hub: en
-            el peor caso, esperar en el sitio.
+            List of steps, possibly partial (up to the edge of the window).
+            Never empty unless the drone is already at end_hub: in the
+            worst case, waiting in place.
         """
         start = drone.current_zone
         if start is self._goal:
@@ -190,8 +189,8 @@ class WhcaPathfinder:
             node = heapq.heappop(open_heap)
             zone = self.graph.get_zone(node.zone_name)
 
-            # El objetivo se mira ANTES que la ventana: llegar justo en el
-            # último turno de la ventana es llegar.
+            # The goal is checked BEFORE the window: arriving exactly on
+            # the last turn of the window counts as arriving.
             if zone is self._goal:
                 return self._reconstruct(node, parents)
 
@@ -219,20 +218,20 @@ class WhcaPathfinder:
                 heapq.heappush(open_heap, child)
 
         if best is None:
-            # Encerrado ahora mismo: ni siquiera se alcanza el borde de la
-            # ventana. Nunca None: quedarse quieto este turno.
+            # Boxed in right now: not even the edge of the window can be
+            # reached. Never None: stay still this turn.
             return [self._wait_step(start, start_turn)]
         return self._reconstruct(best, parents)
 
     def reserve(
         self, drone_id: int, origin: Zone, path: Sequence[Step]
     ) -> None:
-        """Graba `path` en la tabla a nombre de `drone_id`.
+        """Write `path` to the table on behalf of `drone_id`.
 
-        `origin` es la zona en la que está el dron antes del primer paso.
+        `origin` is the zone the drone is in before the first step.
 
         Raises:
-            ReservationError: Si algún paso no cabe (bug de quien llama).
+            ReservationError: If some step does not fit (caller bug).
         """
         previous = origin
         for step in path:
@@ -247,15 +246,15 @@ class WhcaPathfinder:
                 )
             previous = step.zone
 
-    # --- internos ------------------------------------------------------
+    # --- internals -----------------------------------------------------
 
     def _hold(self, drone: DroneLike, start_turn: int) -> None:
-        """Reserva provisional: `drone` sigue en su zona toda la ventana.
+        """Provisional reservation: `drone` stays in its zone all window.
 
-        Se para en el primer instante sin sitio: solo pasa si un dron en
-        tránsito (conservado con `keep`) aterriza ahí, y entonces este
-        dron tiene que salir antes, cosa que su búsqueda ya tendrá en
-        cuenta.
+        It stops at the first instant with no room: that only happens if a
+        drone in transit (kept with `keep`) lands there, and then this
+        drone has to leave earlier, which its search will already take into
+        account.
         """
         zone = drone.current_zone
         for turn in range(start_turn + 1, start_turn + self.window + 1):
@@ -266,7 +265,7 @@ class WhcaPathfinder:
     def _successors(
         self, node: SearchNode, zone: Zone
     ) -> List[Tuple[Zone, int, int]]:
-        """Sucesores legales de `node` como (zona, coste, bonus priority)."""
+        """Legal successors of `node` as (zone, cost, priority bonus)."""
         result: List[Tuple[Zone, int, int]] = []
         for connection in self.graph.neighbors(zone):
             neighbor = connection.other_end(zone)
@@ -274,14 +273,14 @@ class WhcaPathfinder:
                 continue
             if not self.heuristic.is_reachable(neighbor):
                 continue
-            # Conexión y sentido en cada turno del trayecto + zona de llegada.
+            # Connection and direction on every turn of the trip + arrival.
             if not self.table.can_move(zone, neighbor, node.turn):
                 continue
             bonus = 1 if neighbor.zone_type is ZoneType.PRIORITY else 0
             result.append((neighbor, neighbor.movement_cost(), bonus))
 
-        # Esperar en el sitio es un vecino más (Cap. VII.3, "Stay in
-        # place"): el único mecanismo para ceder el paso.
+        # Waiting in place is one more neighbor (Chap. VII.3, "Stay in
+        # place"): the only way to give way to another drone.
         if self.table.zone_has_room(zone, node.turn + 1):
             result.append((zone, 1, 0))
         return result
@@ -289,7 +288,7 @@ class WhcaPathfinder:
     def _reconstruct(
         self, node: SearchNode, parents: Dict[int, SearchNode]
     ) -> List[Step]:
-        """Convierte la cadena de padres de `node` en pasos."""
+        """Turn the chain of parents of `node` into steps."""
         steps: List[Step] = []
         current = node
         while current.tie in parents:
@@ -309,34 +308,35 @@ class WhcaPathfinder:
 
     @staticmethod
     def _wait_step(zone: Zone, start_turn: int) -> Step:
-        """Paso de "quedarse en `zone`" durante el turno `start_turn`."""
+        """Step of "staying in `zone`" during turn `start_turn`."""
         return Step(zone, start_turn + 1, None, 1)
 
 
 class PlanningOrders:
-    """Criterios de prioridad intercambiables para `WhcaPathfinder.plan`.
+    """Interchangeable priority criteria for `WhcaPathfinder.plan`.
 
-    Cada criterio es un `PlanningOrder`: recibe los drones y el turno y
-    devuelve en qué orden planifican. Los que dependen de la heurística son
-    fábricas: reciben `AbstractDistance` y devuelven el criterio.
+    Each criterion is a `PlanningOrder`: it takes the drones and the turn
+    and returns the order in which they plan. Those that depend on the
+    heuristic are factories: they take `AbstractDistance` and return the
+    criterion.
     """
 
     @staticmethod
     def by_id(drones: Sequence[DroneLike], turn: int) -> List[DroneLike]:
-        """Por id ascendente: determinista y trivial, pero D1 acapara."""
+        """By ascending id: deterministic and trivial, but D1 hogs."""
         return sorted(drones, key=lambda drone: drone.id)
 
     @staticmethod
     def farthest_first(heuristic: AbstractDistance) -> PlanningOrder:
-        """Los más lejanos del objetivo (mayor h) eligen primero.
+        """The drones farthest from the goal (highest h) choose first.
 
-        Empate por id. Suele reducir el turno del último en llegar, que es
-        la métrica.
+        Ties by id. It tends to reduce the turn of the last arrival, which
+        is the metric.
         """
         def order(
             drones: Sequence[DroneLike], turn: int
         ) -> List[DroneLike]:
-            """Mayor h primero; empate por id."""
+            """Highest h first; ties by id."""
             return sorted(
                 drones,
                 key=lambda drone: (
@@ -348,16 +348,16 @@ class PlanningOrders:
 
     @staticmethod
     def nearest_first(heuristic: AbstractDistance) -> PlanningOrder:
-        """Los más cercanos al objetivo (menor h) eligen primero.
+        """The drones nearest to the goal (lowest h) choose first.
 
-        Empate por id. Casa bien con la reserva provisional de `plan`: el de
-        delante planifica antes y libera su zona, en vez de que el de
-        detrás lo vea "quieto".
+        Ties by id. It fits well with the provisional reservation of
+        `plan`: the drone ahead plans first and frees its zone, instead of
+        the one behind seeing it "standing still".
         """
         def order(
             drones: Sequence[DroneLike], turn: int
         ) -> List[DroneLike]:
-            """Menor h primero (inalcanzables al final); empate por id."""
+            """Lowest h first (unreachable last); ties by id."""
             return sorted(
                 drones,
                 key=lambda drone: (
@@ -371,9 +371,9 @@ class PlanningOrders:
 
     @staticmethod
     def rotating(drones: Sequence[DroneLike], turn: int) -> List[DroneLike]:
-        """Por id, pero empezando en una posición que avanza con el turno.
+        """By id, but starting at a position that advances with the turn.
 
-        Reparte la ventaja de planificar primero entre replanificaciones.
+        Spreads the advantage of planning first across replans.
         """
         ordered = PlanningOrders.by_id(drones, turn)
         if not ordered:
@@ -383,5 +383,5 @@ class PlanningOrders:
 
     @staticmethod
     def _distance(heuristic: AbstractDistance, zone: Zone) -> int:
-        """h(zone), o -1 si es inalcanzable (esos planifican al final)."""
+        """h(zone), or -1 if unreachable (those plan last)."""
         return heuristic.h(zone) if heuristic.is_reachable(zone) else -1

@@ -18,7 +18,7 @@ def load_graph(filename: str) -> Graph:
 
 
 def start_and_end(graph: Graph) -> Tuple[Zone, Zone]:
-    """Los mapas válidos tienen ambos; estrecha Optional[Zone] (mypy)."""
+    """Valid maps have both; narrows Optional[Zone] (mypy)."""
     assert graph.start_hub is not None
     assert graph.end_hub is not None
     return graph.start_hub, graph.end_hub
@@ -29,12 +29,12 @@ def path_names(path: List[Zone]) -> List[str]:
 
 
 def path_cost(path: List[Zone]) -> int:
-    """Suma el movement_cost() de cada zona salvo la de origen."""
+    """Sum the movement_cost() of each zone except the origin."""
     return sum(zone.movement_cost() for zone in path[1:])
 
 
 def assert_path_is_consistent(graph: Graph, path: List[Zone]) -> None:
-    """Cada par consecutivo de la ruta debe estar conectado en el grafo."""
+    """Each consecutive pair of the route must be connected in the graph."""
     for current, following in zip(path, path[1:]):
         neighbor_names = {
             connection.other_end(current).name
@@ -42,7 +42,7 @@ def assert_path_is_consistent(graph: Graph, path: List[Zone]) -> None:
         }
         assert following.name in neighbor_names, (
             f"'{current.name}' -> '{following.name}' "
-            "no es una conexión real del grafo"
+            "not a real connection of the graph"
         )
 
 
@@ -79,7 +79,7 @@ def test_restricted_chain_adds_two_per_zone() -> None:
 
     assert path is not None
     assert path_names(path) == ["start", "r1", "r2", "goal"]
-    # r1 y r2 son 'restricted' (+2 cada una); goal es 'normal' (+1).
+    # r1 and r2 are 'restricted' (+2 each); goal is 'normal' (+1).
     assert path_cost(path) == 5
 
 
@@ -133,8 +133,8 @@ def test_priority_wins_ties_regardless_of_connection_order(
     path = dijkstra.find_path(start, end)
 
     assert path is not None
-    # Ambas ramas cuestan 3 (dos zonas de la rama + goal); gana la que
-    # acumula más zonas 'priority', sin importar el orden de escritura.
+    # Both branches cost 3 (two zones of the branch + goal); the one with
+    # more 'priority' zones wins, whatever the order they are written in.
     assert path_names(path) == ["start", "p1", "p2", "goal"]
     assert path_cost(path) == 3
 

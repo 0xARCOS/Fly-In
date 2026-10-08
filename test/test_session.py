@@ -1,7 +1,7 @@
-"""Tests de la sesión (SP10): elección de vista, log, escena y ventana.
+"""Session tests (SP10): view choice, log, scene and window.
 
-La ventana se prueba de verdad, con el driver de vídeo `dummy` de SDL: pygame
-dibuja en memoria sin necesitar pantalla.
+The window is really tested, with SDL's `dummy` video driver: pygame draws
+in memory without needing a display.
 """
 
 import io
@@ -35,12 +35,12 @@ ALL_MAPS = sorted(
 
 
 def load(relative: str) -> Tuple[int, Graph]:
-    """(nb_drones, grafo) de un mapa de maps/."""
+    """(nb_drones, graph) of a map from maps/."""
     return MapParser.parse((MAPS_DIR / relative).read_text())
 
 
 def simulate(relative: str) -> Run:
-    """Una simulación completa lista para enseñarse."""
+    """A complete simulation ready to be shown."""
     nb_drones, graph = load(relative)
     sim = Simulator(graph, nb_drones)
     recorder = ReplayRecorder(sim.drones)
@@ -52,7 +52,7 @@ def simulate(relative: str) -> Run:
 
 @pytest.fixture
 def pygame_view(monkeypatch: pytest.MonkeyPatch) -> Iterator[ModuleType]:
-    """El módulo de la ventana, con vídeo en memoria (sin pantalla)."""
+    """The window module, with in-memory video (no display)."""
     monkeypatch.setenv("SDL_VIDEODRIVER", "dummy")
     monkeypatch.setenv("SDL_AUDIODRIVER", "dummy")
     monkeypatch.setenv("PYGAME_HIDE_SUPPORT_PROMPT", "1")
@@ -62,7 +62,7 @@ def pygame_view(monkeypatch: pytest.MonkeyPatch) -> Iterator[ModuleType]:
     pygame.quit()
 
 
-# --- elección de vista ---------------------------------------------------
+# --- view choice ---------------------------------------------------------
 
 def test_quiet_wins_over_everything() -> None:
     assert Session.choose_view("window", True, True) == "none"
@@ -83,7 +83,7 @@ def test_auto_opens_a_window_only_with_a_display(
     assert Session.choose_view("auto", False, True) == "log"
 
 
-# --- log de eventos ------------------------------------------------------
+# --- event log -----------------------------------------------------------
 
 def test_plural() -> None:
     assert EventLog.plural(1, "drone") == "1 drone"
@@ -91,7 +91,7 @@ def test_plural() -> None:
 
 
 def run_log(relative: str, color: bool) -> str:
-    """Todo lo que escribe la vista de log, sin pausas."""
+    """Everything the log view writes, without pauses."""
     stream = io.StringIO()
     Session("log", simulate(relative), Painter(color), stream, 0).play()
     return stream.getvalue()
@@ -143,10 +143,10 @@ def test_capacity_alert_only_when_a_zone_fills() -> None:
     assert stream.getvalue().count("FULL") == 1
 
 
-# --- escena (sin pygame) -------------------------------------------------
+# --- scene (no pygame) --------------------------------------------------
 
 def scene_of(relative: str) -> Scene:
-    """La escena de un mapa ya simulado."""
+    """The scene of an already simulated map."""
     run = simulate(relative)
     return Scene(run.graph, run.recorder.positions, run.recorder.lines,
                  run.replans)
@@ -180,10 +180,10 @@ def test_scene_counts_deliveries_and_replans() -> None:
     scene = scene_of("valid/bottleneck.txt")
     assert scene.delivered[0] == 0 and scene.delivered[-1] == 3
     assert scene.newly_delivered(2) == [1]
-    assert 1 in scene.replan_turns, "la replanificación del instante 0"
+    assert 1 in scene.replan_turns, "the replan at instant 0"
 
 
-# --- ventana pygame -------------------------------------------------------
+# --- pygame window -------------------------------------------------------
 
 @pytest.mark.parametrize("map_file", ALL_MAPS)
 def test_window_draws_every_turn_of_every_map(
@@ -239,7 +239,7 @@ def test_quit_event_closes_the_window_at_once(
         pygame.event.post(pygame.event.Event(pygame.QUIT))
         view.play_turn(1, 5.0)
         assert view.closed and not pygame.get_init()
-        view.play_turn(2, 5.0)   # ya cerrada: no hace nada ni falla
+        view.play_turn(2, 5.0)   # already closed: no-op, no error
 
 
 def test_space_pauses_and_resumes_the_animation(
@@ -268,7 +268,7 @@ def test_end_card_waits_for_a_key_not_forever(
         assert view.open()
         pygame.event.post(pygame.event.Event(pygame.KEYDOWN,
                                              key=pygame.K_RETURN))
-        view.finish(run.metrics, 30.0)   # vuelve con la tecla, no a los 30 s
+        view.finish(run.metrics, 30.0)   # returns on key press, not at 30 s
         view.finish(run.metrics, 0.0)
 
 
@@ -297,7 +297,7 @@ def test_no_window_means_terminal_only(
 def test_missing_pygame_means_terminal_only(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # None en sys.modules hace que el import falle con ImportError.
+    # None in sys.modules makes the import fail with ImportError.
     monkeypatch.setitem(sys.modules, "fly_in.visualization.pygame_view",
                         None)
     stream = io.StringIO()
@@ -309,7 +309,7 @@ def test_missing_pygame_means_terminal_only(
 
 
 def test_pygame_never_writes_to_stdout() -> None:
-    # pygame saluda por stdout al importarse: stdout es solo del subject.
+    # pygame greets on stdout when imported: stdout is only for the subject.
     env = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy")
     env.pop("PYGAME_HIDE_SUPPORT_PROMPT", None)
     result = subprocess.run(

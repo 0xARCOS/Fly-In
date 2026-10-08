@@ -1,4 +1,4 @@
-# a-b y luego b-a -> conexion duplicada
+# a-b and then b-a -> duplicate connection
 nb_drones: 2
 start_hub: start 0 0
 end_hub: goal 2 0

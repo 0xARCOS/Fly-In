@@ -1,1 +1,1 @@
-"""Simulación turno a turno: drones y bucle principal."""
+"""Turn-by-turn simulation: drones and main loop."""

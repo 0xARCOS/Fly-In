@@ -1,1 +1,1 @@
-"""Salida en el formato exacto del subject (Cap. VII.5)."""
+"""Output in the exact format of the subject (Chap. VII.5)."""

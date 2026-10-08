@@ -1,4 +1,4 @@
-# connection referencia una zona que no existe
+# connection references a zone that does not exist
 nb_drones: 1
 start_hub: start 0 0
 end_hub: goal 2 0

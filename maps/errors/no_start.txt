@@ -1,4 +1,4 @@
-# Falta start_hub -> debe fallar el criterio "exactamente un start_hub"
+# Missing start_hub -> must fail the "exactly one start_hub" rule
 nb_drones: 2
 end_hub: goal 4 0
 hub: waypoint1 1 0

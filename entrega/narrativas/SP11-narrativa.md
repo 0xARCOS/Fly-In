@@ -1,6 +1,6 @@
 # SP11 contado de principio a fin
 
-Continúa [`11-narrativa-sp10.md`](./SP10-narrativa.md) y cierra la serie. El
+Continúa [`SP10-narrativa.md`](./SP10-narrativa.md) y cierra la serie. El
 programa ya resuelve los mapas, los escribe en el formato exacto y se ve. Este
 último tramo no añade funcionalidad: **mide**, **decide con datos** y
 **entrega**. Es el que convierte "funciona en mi máquina" en "cualquiera lo
@@ -11,7 +11,7 @@ clona, lo ejecuta y comprueba que cumple".
 > [`fly_in/benchmarks.py`](../../fly_in/benchmarks.py) (`make bench`), tests en
 > [`test/test_metrics.py`](../../test/test_metrics.py) y el
 > [`README.md`](../../README.md) final. La guía de pasos es
-> [`SP11-benchmarks-y-readme.md`](../../docs/build/SP11-benchmarks-y-readme.md).
+> [`SP11-benchmarks-y-readme.md`](../build/SP11-benchmarks-y-readme.md).
 
 ---
 
@@ -46,7 +46,7 @@ alguien que solo leyera la salida.
 | `peak_airborne` | Máximo de `Move` con `arrives=False` en un turno | Uso de las zonas `restricted` |
 | `seconds` | Tiempo de cálculo, sin la animación | Eficiencia |
 
-Salen por `stderr` con `--metrics`, en la tarjeta final de la ventana y en
+Salen por `stderr` con `--metrics`, en el resumen final del log y en
 `make bench`. En `bottleneck.txt` se comprueban a mano en un test: D1 entrega
 en el turno 2, D2 en el 3 y D3 en el 4, así que el turno medio es 3; cada uno se
 mueve dos turnos, así que hay 6 movimientos y (2 + 3 + 4) − 6 = 3 esperas.
@@ -180,8 +180,8 @@ ejecutó todo desde cero:
 | Paso | Resultado |
 |---|---|
 | `make install` | ✅ |
-| `make test` | ✅ 411 tests |
-| `make lint-strict` | ✅ sin avisos en 40 ficheros |
+| `make test` | ✅ 425 tests |
+| `make lint-strict` | ✅ sin avisos en 42 ficheros |
 | pygame desde `pyproject.toml` | ✅ `make install` instala `pygame-ce`, la única dependencia de ejecución |
 
 La prueba en limpio es la que descubre las dependencias implícitas: algo que
@@ -198,7 +198,7 @@ Cada pregunta probable tiene su respuesta escrita en la documentación:
 | Pregunta | Dónde está la respuesta |
 |---|---|
 | ¿Por qué `(zona, turno)` y no solo `zona`? | Narrativa SP06–SP07, §1 y §4.1 |
-| ¿Por qué WHCA\* y no CA\*? ¿Qué pierdes con la ventana? | [`04-algoritmo.md`](../../docs/04-algoritmo.md); SP07 |
+| ¿Por qué WHCA\* y no CA\*? ¿Qué pierdes con la ventana? | [`04-algoritmo.md`](../referencia/04-algoritmo.md); SP07 |
 | ¿Por qué la heurística es admisible? | SP05; narrativa SP06–SP07, §4.2 |
 | ¿Por qué dos fases en el simulador? | Narrativa SP08, §4.2 |
 | ¿Dónde falla el algoritmo y por qué? | SP07 (`swap_corridor.txt`); narrativa SP08, §8 |

@@ -1,9 +1,9 @@
-"""Grabación de una simulación, turno a turno (SP10).
+"""Recording of a simulation, turn by turn (SP10).
 
-`ReplayRecorder` es un observador del simulador: tras cada turno guarda
-dónde está cada dron y la línea de `stdout` de ese turno. Las vistas que
-enseñan la partida después de simularla (la ventana y el log) leen de aquí:
-ninguna vuelve a calcular nada.
+`ReplayRecorder` is a simulator observer: after each turn it stores where
+each drone is and the `stdout` line of that turn. The views that show the
+run after simulating it (the window and the log) read from here: none of
+them computes anything again.
 """
 
 from typing import Dict, List, Sequence
@@ -11,16 +11,16 @@ from typing import Dict, List, Sequence
 from fly_in.simulation.drone import Drone
 from fly_in.simulation.simulator import Move
 
-# Posición de un dron: ["z", zona] | ["a", origen, destino] (en el aire)
-# | ["d"] (entregado).
+# Position of a drone: ["z", zone] | ["a", origin, target] (in the air)
+# | ["d"] (delivered).
 Position = List[str]
 
 
 class ReplayRecorder:
-    """Guarda un fotograma por turno: posiciones y línea de salida."""
+    """Store one frame per turn: positions and output line."""
 
     def __init__(self, drones: Sequence[Drone]) -> None:
-        """Fotograma 0: todos los drones donde empiezan."""
+        """Frame 0: every drone where it starts."""
         start = self._positions(drones)
         self.positions: List[Dict[str, Position]] = [start]
         self.lines: List[str] = [""]
@@ -28,7 +28,7 @@ class ReplayRecorder:
     def on_turn(
         self, turn: int, moves: Sequence[Move], drones: Sequence[Drone]
     ) -> None:
-        """Añade el fotograma del turno `turn`."""
+        """Append the frame of turn `turn`."""
         line = [
             f"D{m.drone_id}-"
             + (m.target.name if m.arrives else m.connection.name)
@@ -40,7 +40,7 @@ class ReplayRecorder:
 
     @staticmethod
     def _positions(drones: Sequence[Drone]) -> Dict[str, Position]:
-        """Dónde está cada dron ahora mismo."""
+        """Where each drone is right now."""
         result: Dict[str, Position] = {}
         for drone in drones:
             if not drone.is_active:

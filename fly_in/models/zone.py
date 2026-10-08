@@ -1,11 +1,11 @@
-"""Zona del mapa: nodo del grafo con tipo, coordenadas y capacidad."""
+"""Map zone: graph node with a type, coordinates and a capacity."""
 
 from enum import Enum
 from typing import Optional
 
 
 class ZoneType(Enum):
-    """Tipo de zona (Cap. VI). El valor es el texto del metadato 'zone='."""
+    """Zone type (Chap. VI). The value is the text of the 'zone=' tag."""
 
     NORMAL = "normal"
     RESTRICTED = "restricted"
@@ -13,21 +13,21 @@ class ZoneType(Enum):
     BLOCKED = "blocked"
 
 
-# Turnos que cuesta entrar en una zona según su tipo (Cap. VII.3).
-# BLOCKED no aparece: no se puede entrar.
+# Turns it costs to enter a zone, by type (Chap. VII.3).
+# BLOCKED is missing on purpose: it cannot be entered.
 MOVEMENT_COST = {
     ZoneType.NORMAL: 1,
     ZoneType.PRIORITY: 1,
     ZoneType.RESTRICTED: 2,
 }
 
-# Capacidad de start_hub/end_hub (Cap. VII.2). Al ser infinito, cualquier
-# comparación `ocupación < max_drones` es cierta sin casos especiales.
+# Capacity of start_hub/end_hub (Chap. VII.2). Being infinite, any
+# comparison `occupancy < max_drones` is true with no special cases.
 UNLIMITED = float("inf")
 
 
 class Zone:
-    """Un nodo del mapa: un hub normal, el start_hub o el end_hub."""
+    """A map node: a normal hub, the start_hub or the end_hub."""
 
     def __init__(
         self,
@@ -38,15 +38,15 @@ class Zone:
         max_drones: float = 1,
         color: Optional[str] = None,
     ) -> None:
-        """Crea la zona.
+        """Create the zone.
 
         Args:
-            name: Nombre único, sin guiones ni espacios.
-            x: Coordenada horizontal (solo para dibujar).
-            y: Coordenada vertical (solo para dibujar).
-            zone_type: Tipo de la zona.
-            max_drones: Drones simultáneos admitidos; UNLIMITED en start/end.
-            color: Color opcional para la visualización.
+            name: Unique name, with no dashes or spaces.
+            x: Horizontal coordinate (only used for drawing).
+            y: Vertical coordinate (only used for drawing).
+            zone_type: Type of the zone.
+            max_drones: Simultaneous drones allowed; UNLIMITED on start/end.
+            color: Optional color for the visualization.
         """
         self.name = name
         self.x = x
@@ -56,14 +56,14 @@ class Zone:
         self.color = color
 
     def is_traversable(self) -> bool:
-        """Devuelve False únicamente para las zonas 'blocked'."""
+        """Return False only for 'blocked' zones."""
         return self.zone_type is not ZoneType.BLOCKED
 
     def movement_cost(self) -> int:
-        """Turnos que cuesta entrar en la zona.
+        """Turns it costs to enter the zone.
 
         Raises:
-            ValueError: Si la zona es 'blocked' (no se puede entrar).
+            ValueError: If the zone is 'blocked' (it cannot be entered).
         """
         if not self.is_traversable():
             raise ValueError(
@@ -72,7 +72,7 @@ class Zone:
         return MOVEMENT_COST[self.zone_type]
 
     def __repr__(self) -> str:
-        """Representación legible para depurar."""
+        """Readable representation for debugging."""
         capacity_str = (
             "inf" if self.max_drones == UNLIMITED
             else str(int(self.max_drones))

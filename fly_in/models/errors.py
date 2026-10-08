@@ -1,25 +1,25 @@
-"""Excepciones de lectura y validación de mapas."""
+"""Exceptions raised while reading and validating maps."""
 
 
 class MapError(Exception):
-    """Raíz de todos los errores relacionados con un mapa (E/S o contenido)."""
+    """Root of every map-related error (I/O or content)."""
 
 
 class MapParseError(MapError):
-    """Error de parseo en una línea concreta del archivo de mapa.
+    """Parse error on a specific line of the map file.
 
-    Lleva siempre la línea original (número + contenido) y la causa, como
-    exige el Cap. VII.4: "a clear error message indicating the line and
+    It always carries the original line (number + content) and the cause,
+    as Chap. VII.4 requires: "a clear error message indicating the line and
     cause".
     """
 
     def __init__(self, line_num: int, line_content: str, reason: str) -> None:
-        """Crea el error.
+        """Create the error.
 
         Args:
-            line_num: Número de línea en el archivo original (1-based).
-            line_content: Texto de la línea, ya sin comentario.
-            reason: Causa del fallo.
+            line_num: Line number in the original file (1-based).
+            line_content: Text of the line, with the comment stripped.
+            reason: Cause of the failure.
         """
         self.line_num = line_num
         self.line_content = line_content
@@ -28,8 +28,8 @@ class MapParseError(MapError):
 
 
 class MapValidationError(MapError):
-    """Fallo del archivo en conjunto (vacío, falta start_hub, sin ruta…).
+    """The file fails as a whole (empty, no start_hub, no path…).
 
-    A diferencia de `MapParseError`, no hay una única línea a la que
-    señalar: la comprobación solo puede hacerse tras leer el archivo entero.
+    Unlike `MapParseError`, there is no single line to point at: the check
+    can only be done after reading the whole file.
     """

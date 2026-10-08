@@ -1,13 +1,15 @@
-"""Cómo se enseña una simulación ya calculada (SP10).
+"""How an already computed simulation is shown (SP10).
 
-La simulación tarda milisegundos; lo que dura es enseñarla. Hay dos vistas:
+The simulation takes milliseconds; what takes time is showing it. There
+are two views:
 
-- `window`: la partida animada en una ventana pygame y el log de eventos en
-  la terminal, avanzando juntos turno a turno.
-- `log`: solo el log de eventos en la terminal.
+- `window`: the run animated in a pygame window and the event log in the
+  terminal, advancing together turn by turn.
+- `log`: only the event log in the terminal.
 
-`auto` elige `window` si hay terminal y pantalla gráfica, y `log` en otro
-caso: con una tubería o sin pantalla nunca se intenta abrir una ventana.
+`auto` picks `window` if there is a terminal and a graphical display, and
+`log` otherwise: with a pipe or without a display it never tries to open a
+window.
 """
 
 import os
@@ -24,31 +26,31 @@ from fly_in.visualization.palette import UI_TEXT, UI_TITLE, UI_WARN, Painter
 from fly_in.visualization.recorder import ReplayRecorder
 from fly_in.visualization.scene import Scene
 
-# Segundos por turno de cada vista si no se pasa --delay.
+# Seconds per turn of each view when --delay is not given.
 DEFAULT_DELAYS = {"window": 0.8, "log": 0.25}
-# La cuenta atrás: se ve a la vez en la ventana y en la terminal.
+# The countdown: shown at the same time in the window and the terminal.
 COUNTDOWN = (("3", 0.5), ("2", 0.5), ("1", 0.5), ("GO", 0.5))
-# Cuánto espera la tarjeta final a que se pulse una tecla.
+# How long the final summary waits for a key press.
 END_HOLD = 20.0
 
 
 class AnimatedView(Protocol):
-    """Lo que `Session` necesita de la ventana (la cumple PygameView).
+    """What `Session` needs from the window (PygameView satisfies it).
 
-    Con un Protocol, este módulo no importa pygame: solo se importa cuando
-    de verdad se va a abrir una ventana.
+    With a Protocol, this module does not import pygame: it is imported
+    only when a window is actually going to be opened.
     """
 
     closed: bool
 
     def play_turn(self, turn: int, seconds: float) -> None:
-        """Anima el turno `turn` durante `seconds`."""
+        """Animate turn `turn` for `seconds`."""
         ...
 
 
 @dataclass(frozen=True)
 class Run:
-    """Una simulación terminada, lista para enseñarse."""
+    """A finished simulation, ready to be shown."""
 
     graph: Graph
     nb_drones: int
@@ -62,20 +64,20 @@ class Run:
 
 
 class Session:
-    """Enseña un `Run` en la vista 'window' o 'log'."""
+    """Show a `Run` in the 'window' or 'log' view."""
 
     def __init__(
         self, view: str, run: Run, paint: Painter, stream: TextIO,
         pace: float,
     ) -> None:
-        """Prepara la sesión.
+        """Set up the session.
 
         Args:
-            view: 'window' o 'log'.
-            run: La simulación ya calculada.
-            paint: El Painter (con o sin color).
-            stream: Dónde escribir el log (stderr).
-            pace: Segundos por turno (0 = todo de golpe).
+            view: 'window' or 'log'.
+            run: The already computed simulation.
+            paint: The Painter (with or without color).
+            stream: Where to write the log (stderr).
+            pace: Seconds per turn (0 = everything at once).
         """
         self.view = view
         self.run = run
@@ -86,7 +88,7 @@ class Session:
 
     @staticmethod
     def display_available() -> bool:
-        """¿Hay una pantalla gráfica donde abrir una ventana?"""
+        """Is there a graphical display to open a window on?"""
         if sys.platform in ("darwin", "win32"):
             return True
         return bool(
@@ -95,7 +97,7 @@ class Session:
 
     @staticmethod
     def choose_view(requested: str, quiet: bool, interactive: bool) -> str:
-        """La vista efectiva: 'none', 'window' o 'log'."""
+        """The effective view: 'none', 'window' or 'log'."""
         if quiet:
             return "none"
         if requested != "auto":
@@ -105,7 +107,7 @@ class Session:
         return "log"
 
     def play(self) -> None:
-        """Enseña la simulación entera y cierra con el resumen."""
+        """Show the whole simulation and close with the summary."""
         if self.view == "none":
             return
         if self.view == "window" and self._play_window():
@@ -114,16 +116,16 @@ class Session:
         self._play_log()
         self.log.finish(self.run.metrics, len(self.run.replans))
 
-    # --- internos ------------------------------------------------------
+    # --- internals -----------------------------------------------------
 
     def _play_window(self) -> bool:
-        """La partida en la ventana y en la terminal a la vez.
+        """The run in the window and in the terminal at the same time.
 
-        Devuelve False si no se puede abrir la ventana: `play` sigue
-        entonces con la terminal sola.
+        Returns False if the window cannot be opened: `play` then carries
+        on with the terminal alone.
         """
-        # pygame saluda por stdout al importarse, y stdout es solo para
-        # las líneas del subject. La variable lo silencia.
+        # pygame prints a greeting on stdout when imported, and stdout is
+        # only for the lines of the subject. The variable silences it.
         os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
         try:
             from fly_in.visualization.pygame_view import PygameView
@@ -154,11 +156,11 @@ class Session:
         return True
 
     def _play_log(self, window: Optional[AnimatedView] = None) -> None:
-        """Un bloque de log por turno; con ventana, la animación del turno.
+        """One log block per turn; with a window, the turn's animation.
 
-        El bloque se escribe justo antes de animar el turno, así las dos
-        pantallas enseñan el mismo turno a la vez. Si el usuario cierra la
-        ventana, se avisa una vez y la terminal sigue a su ritmo.
+        The block is written right before animating the turn, so both
+        screens show the same turn at the same time. If the user closes the
+        window, it warns once and the terminal goes on at its own pace.
         """
         run = self.run
         replans: Dict[int, List[Replan]] = {}
@@ -166,7 +168,7 @@ class Session:
             replans.setdefault(replan.turn, []).append(replan)
         warned = False
         for number, moves in enumerate(run.trace, start=1):
-            # La replanificación del instante T precede al turno T+1.
+            # The replan at instant T comes before turn T+1.
             self.log.turn(number, moves, run.recorder.positions[number],
                           replans.get(number - 1, []))
             if window is not None and not window.closed:

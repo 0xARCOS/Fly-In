@@ -1,8 +1,8 @@
-"""Tests de WhcaPathfinder (SP07).
+"""Tests for WhcaPathfinder (SP07).
 
-Mismo orden que docs/build/SP07-whca.md: cada bloque solo tiene sentido si
-el anterior pasa. Convención de tiempo de SP06: "instante t" = estado tras
-t turnos; un movimiento que sale en T con coste c llega en T+c.
+Same order as entrega/build/SP07-whca.md: each block only makes sense if
+the previous one passes. SP06 time convention: "instant t" = state after
+t turns; a move that leaves at T with cost c arrives at T+c.
 """
 
 from dataclasses import dataclass
@@ -38,44 +38,44 @@ OFFICIAL_MAPS = sorted(
 
 @dataclass(frozen=True)
 class FakeDrone:
-    """Lo mínimo que pide DroneLike; el Drone real llega en SP08."""
+    """The bare minimum DroneLike asks for; the real Drone comes in SP08."""
 
     id: int
     current_zone: Zone
 
 
 def load_graph(relative: str) -> Graph:
-    """Parsea un mapa de maps/ por ruta relativa."""
+    """Parse a map from maps/ by relative path."""
     return MapParser.parse((MAPS_DIR / relative).read_text())[1]
 
 
 def make_finder(graph: Graph, window: int = 8) -> WhcaPathfinder:
-    """Buscador con tabla vacía sobre `graph`."""
+    """Pathfinder with an empty table over `graph`."""
     return WhcaPathfinder(
         graph, AbstractDistance(graph), ReservationTable(graph), window
     )
 
 
 def start_of(graph: Graph) -> Zone:
-    """start_hub (estrecha Optional para mypy)."""
+    """start_hub (narrows Optional for mypy)."""
     assert graph.start_hub is not None
     return graph.start_hub
 
 
 def drones_at_start(graph: Graph, count: int) -> List[FakeDrone]:
-    """`count` drones en start_hub, con ids 1..count."""
+    """`count` drones at start_hub, with ids 1..count."""
     return [FakeDrone(i, start_of(graph)) for i in range(1, count + 1)]
 
 
 def moves(path: Sequence[Step]) -> List[str]:
-    """Zonas visitadas por la ruta, sin las esperas."""
+    """Zones visited by the route, without the waits."""
     return [step.zone.name for step in path if step.connection is not None]
 
 
 def positions(
     origin: Zone, start_turn: int, path: Sequence[Step]
 ) -> Dict[int, Optional[str]]:
-    """Dónde está el dron en cada instante (None = en el aire)."""
+    """Where the drone is at each instant (None = in the air)."""
     where: Dict[int, Optional[str]] = {start_turn: origin.name}
     for step in path:
         for in_air in range(step.arrival_turn - step.cost + 1,
@@ -88,7 +88,7 @@ def positions(
 def assert_path_is_well_formed(
     graph: Graph, origin: Zone, start_turn: int, path: Sequence[Step]
 ) -> None:
-    """Turnos contiguos, costes coherentes y conexiones reales."""
+    """Contiguous turns, consistent costs and real connections."""
     previous, turn = origin, start_turn
     for step in path:
         assert step.arrival_turn == turn + step.cost
@@ -102,7 +102,7 @@ def assert_path_is_well_formed(
         previous, turn = step.zone, step.arrival_turn
 
 
-# --- el nodo de búsqueda -----------------------------------------------
+# --- the search node ---------------------------------------------------
 
 def test_search_node_orders_by_f_first() -> None:
     cheap = SearchNode(f=3, neg_priority=0, g=9, turn=9, tie=9,
@@ -128,7 +128,7 @@ def test_window_must_be_positive() -> None:
         make_finder(graph, window=0)
 
 
-# --- 1. un dron, tabla vacía: replica a Dijkstra -----------------------
+# --- 1. one drone, empty table: same as Dijkstra ----------------------
 
 @pytest.mark.parametrize("map_file", VALID_MAPS)
 def test_single_drone_matches_dijkstra(map_file: str) -> None:
@@ -142,7 +142,7 @@ def test_single_drone_matches_dijkstra(map_file: str) -> None:
     path = finder.find_path(FakeDrone(1, start), 0)
 
     assert moves(path) == [zone.name for zone in expected[1:]]
-    assert all(step.connection is not None for step in path), "sin esperas"
+    assert all(step.connection is not None for step in path), "no waits"
     assert path[-1].arrival_turn == Dijkstra(graph).path_cost(expected)
     assert_path_is_well_formed(graph, start, 0, path)
 
@@ -151,7 +151,7 @@ def test_single_drone_matches_dijkstra(map_file: str) -> None:
 def test_single_drone_matches_dijkstra_cost_on_official_maps(
     map_file: str,
 ) -> None:
-    # En los oficiales puede haber varias rutas óptimas: se compara el coste.
+    # Official maps may have several optimal routes: compare the cost.
     graph = load_graph(map_file)
     finder = make_finder(graph, window=200)
     start = start_of(graph)
@@ -178,7 +178,7 @@ def test_drone_already_at_goal_has_nothing_to_do() -> None:
     assert make_finder(graph).find_path(FakeDrone(1, graph.end_hub), 0) == []
 
 
-# --- 2. un dron, mapa con blocked --------------------------------------
+# --- 2. one drone, map with blocked ------------------------------------
 
 def test_single_drone_goes_around_blocked_zone() -> None:
     graph = load_graph("valid/blocked_detour.txt")
@@ -214,7 +214,7 @@ def test_two_drones_never_share_narrow() -> None:
     last = max(max(t) for t in timelines)
     for turn in range(last + 1):
         in_narrow = sum(1 for t in timelines if t.get(turn) == "narrow")
-        assert in_narrow <= 1, f"dos drones en narrow en el instante {turn}"
+        assert in_narrow <= 1, f"two drones in narrow at instant {turn}"
 
 
 def test_three_drones_all_arrive_taking_turns() -> None:
@@ -232,7 +232,7 @@ def test_three_drones_all_arrive_taking_turns() -> None:
         for step in path
         if step.zone.name == "narrow"
     )
-    assert narrow_turns == [1, 2, 3], "uno por turno, sin huecos"
+    assert narrow_turns == [1, 2, 3], "one per turn, no gaps"
 
 
 def test_plan_records_every_path_in_the_table() -> None:
@@ -257,7 +257,7 @@ def test_drones_split_between_equal_corridors() -> None:
     assert paths[1][-1].arrival_turn == paths[2][-1].arrival_turn == 3
 
 
-# --- 6. ventana pequeña: ruta parcial ---------------------------------
+# --- 6. small window: partial route ----------------------------------
 
 def test_small_window_returns_partial_path() -> None:
     graph = load_graph("valid/linear.txt")
@@ -265,7 +265,7 @@ def test_small_window_returns_partial_path() -> None:
 
     path = finder.find_path(FakeDrone(1, start_of(graph)), 0)
 
-    assert path, "nunca vacía"
+    assert path, "never empty"
     assert moves(path) == ["waypoint1", "waypoint2"]
     assert path[-1].arrival_turn == 2
     assert path[-1].zone is not graph.end_hub
@@ -282,12 +282,12 @@ def test_partial_path_can_be_recorded() -> None:
     graph = load_graph("valid/linear.txt")
     finder = make_finder(graph, window=2)
     finder.plan(drones_at_start(graph, 2), 0)
-    # Ambos caben: el segundo sale un turno después.
+    # Both fit: the second one leaves one turn later.
     assert finder.table.zone_occupants(graph.get_zone("waypoint2"), 2) == [1]
     assert finder.table.zone_occupants(graph.get_zone("waypoint1"), 2) == [2]
 
 
-# --- 7. dron encerrado -------------------------------------------------
+# --- 7. boxed-in drone ------------------------------------------------
 
 ENCLOSED_MAP = """\
 nb_drones: 3
@@ -313,15 +313,15 @@ def test_enclosed_drone_waits_in_place() -> None:
 
     path = finder.find_path(FakeDrone(1, cell), 0)
 
-    assert path, "nunca vacía"
+    assert path, "never empty"
     assert all(step.connection is None and step.zone is cell
                for step in path)
     assert path[0].arrival_turn == 1
-    finder.reserve(1, cell, path)  # esperar sí cabe en la tabla
+    finder.reserve(1, cell, path)  # waiting does fit in the table
 
 
 def test_fully_enclosed_drone_gets_single_wait_step() -> None:
-    # Ni siquiera puede quedarse: otro dron tiene reservada su zona.
+    # It cannot even stay: another drone has reserved its zone.
     graph = MapParser.parse(ENCLOSED_MAP)[1]
     finder = make_finder(graph)
     cell = graph.get_zone("cell")
@@ -335,7 +335,7 @@ def test_fully_enclosed_drone_gets_single_wait_step() -> None:
     assert path == [Step(cell, 1, None, 1)]
 
 
-# --- 8. ruta por restricted -------------------------------------------
+# --- 8. route through restricted --------------------------------------
 
 def test_restricted_transit_reserves_link_two_consecutive_turns() -> None:
     graph = load_graph("valid/restricted_chain.txt")
@@ -361,32 +361,33 @@ def test_second_drone_cannot_enter_link_mid_transit() -> None:
 
     paths = finder.plan(drones_at_start(graph, 2), 0)
 
-    # D1 ocupa start-r1 (capacidad 1) entre 0 y 2: D2 no puede entrar en
-    # la conexión hasta el 2, aunque r1 esté libre antes.
+    # D1 occupies start-r1 (capacity 1) between 0 and 2: D2 cannot enter
+    # the connection until 2, even though r1 is free earlier.
     second = [s for s in paths[2] if s.connection is not None][0]
     assert second.zone.name == "r1"
     assert second.arrival_turn - second.cost == 2
 
 
-# --- 9. swap_corridor.txt: el caso patológico --------------------------
+# --- 9. swap_corridor.txt: the pathological case -----------------------
 #
-# Qué pasa, documentado:
+# What happens, documented:
 #
-# a) Con un único end_hub y una h exacta, dos drones que planifican con
-#    tabla vacía NUNCA quieren cruzar el mismo pasillo en sentidos
-#    opuestos: si A fuera oeste→este y B este→oeste, tendría que ser a la
-#    vez h(oeste) > h(este) y h(este) > h(oeste). El cruce de frente solo
-#    aparece cuando un dron se ha apartado (va "hacia atrás").
-# b) Si un dron cruza el pasillo hacia el otro y el que espera en la otra
-#    punta tiene sitio donde quedarse, la regla anti-cruce (would_swap) lo
-#    hace esperar hasta que el pasillo queda libre. Funciona.
-# c) LIMITACIÓN de find_path en solitario: si quien viene de frente
-#    reservó aterrizar justo en la zona (capacidad 1) donde está el otro,
-#    y ese otro no está en la tabla porque planifica después, el segundo
-#    queda encerrado: no puede cruzar (swap) ni quedarse (zona llena).
-#    find_path devuelve la espera de último recurso, que NO cabe en la
-#    tabla. plan() lo evita con la reserva provisional: ver los tests de
-#    "posición actual de quien aún no ha planificado".
+# a) With a single end_hub and an exact h, two drones planning on an
+#    empty table NEVER want to cross the same corridor in opposite
+#    directions: if A went west→east and B east→west, it would have to be
+#    both h(west) > h(east) and h(east) > h(west). The head-on crossing
+#    only appears when a drone has stepped aside (it goes "backwards").
+# b) If a drone crosses the corridor towards the other one and the one
+#    waiting at the far end has room to stay, the anti-swap rule
+#    (would_swap) makes it wait until the corridor is clear. It works.
+# c) LIMITATION of find_path on its own: if the drone coming head-on
+#    reserved landing exactly in the zone (capacity 1) where the other one
+#    is, and that other one is not in the table because it plans later,
+#    the second one is boxed in: it can neither cross (swap) nor stay
+#    (zone full). find_path returns the last-resort wait, which does NOT
+#    fit in the table. plan() prevents it with the provisional
+#    reservation: see the tests for "current position of whoever has not
+#    planned yet".
 
 def test_swap_corridor_both_planned_never_meet_head_on() -> None:
     graph = load_graph("valid/swap_corridor.txt")
@@ -409,7 +410,7 @@ def test_swap_corridor_head_on_waits_until_corridor_clears() -> None:
     graph = MapParser.parse(SWAP_WITH_ROOM)[1]
     finder = make_finder(graph)
     west, mid, east = (graph.get_zone(n) for n in ("west", "mid", "east"))
-    # D9 se aparta hacia el este: west→mid (sale 0), mid→east (sale 1).
+    # D9 steps aside to the east: west→mid (leaves 0), mid→east (leaves 1).
     finder.table.reserve_move(9, west, mid, 0)
     finder.table.reserve_move(9, mid, east, 1)
 
@@ -417,10 +418,10 @@ def test_swap_corridor_head_on_waits_until_corridor_clears() -> None:
 
     waits = [s for s in path if s.connection is None]
     first_move = [s for s in path if s.connection is not None][0]
-    assert len(waits) == 2, "espera a que D9 salga del pasillo"
+    assert len(waits) == 2, "waits for D9 to leave the corridor"
     assert first_move.zone is mid
     assert first_move.arrival_turn - first_move.cost == 2
-    finder.reserve(1, east, path)  # y la ruta cabe: sin cruce de frente
+    finder.reserve(1, east, path)  # and the route fits: no head-on crossing
 
 
 def test_swap_corridor_known_limitation_unreservable_wait() -> None:
@@ -428,13 +429,13 @@ def test_swap_corridor_known_limitation_unreservable_wait() -> None:
     finder = make_finder(graph)
     west, mid, east = (graph.get_zone(n) for n in ("west", "mid", "east"))
     finder.table.reserve_move(9, west, mid, 0)
-    finder.table.reserve_move(9, mid, east, 1)  # aterriza en east en 2
+    finder.table.reserve_move(9, mid, east, 1)  # lands on east at 2
 
     path = finder.find_path(FakeDrone(1, east), 0)
 
     assert path == [Step(east, 1, None, 1)]
-    # Esperar un turno sí cabe, pero en el 2 D9 llega a east (cap 1) y D1
-    # no tiene adónde ir: ni mid (cruce) ni quedarse (lleno).
+    # Waiting one turn does fit, but at 2 D9 reaches east (cap 1) and D1
+    # has nowhere to go: neither mid (swap) nor stay (full).
     finder.reserve(1, east, path)
     assert not finder.table.zone_has_room(east, 2)
     assert not finder.table.can_move(east, mid, 1)
@@ -442,15 +443,15 @@ def test_swap_corridor_known_limitation_unreservable_wait() -> None:
         finder.table.reserve_wait(1, east, 2)
 
 
-# --- posición actual de quien aún no ha planificado -------------------
+# --- current position of whoever has not planned yet ------------------
 #
-# D2 está en `cell` y no puede salir: `right` está ocupada por un dron
-# externo (p. ej. uno en tránsito conservado con `keep`) y por `left` viene
-# D1. Si D1 planifica sin saber que D2 está en `cell`, reserva entrar ahí y
-# D2 queda sin salida: ni cruzarse con D1 ni quedarse (zona llena).
+# D2 is in `cell` and cannot leave: `right` is taken by an external drone
+# (e.g. one in transit kept with `keep`) and D1 is coming through `left`.
+# If D1 plans without knowing D2 is in `cell`, it reserves entering there
+# and D2 is left with no way out: neither crossing D1 nor staying (full).
 
 def blocked_cell_setup(window: int = 8) -> WhcaPathfinder:
-    """ENCLOSED_MAP con `right` ocupada por el dron 9 en 1..window+1."""
+    """ENCLOSED_MAP with `right` taken by drone 9 at 1..window+1."""
     graph = MapParser.parse(ENCLOSED_MAP)[1]
     finder = make_finder(graph, window)
     for turn in range(1, window + 2):
@@ -465,7 +466,7 @@ def test_plan_does_not_let_earlier_drone_trap_a_later_one() -> None:
     d1 = FakeDrone(1, graph.get_zone("left"))
     d2 = FakeDrone(2, cell)
 
-    paths = finder.plan([d1, d2], 0)  # no lanza ReservationError
+    paths = finder.plan([d1, d2], 0)  # does not raise ReservationError
 
     assert all(s.connection is None and s.zone is cell for s in paths[2])
     assert "cell" not in moves(paths[1][:finder.window])
@@ -474,8 +475,8 @@ def test_plan_does_not_let_earlier_drone_trap_a_later_one() -> None:
 
 
 def test_plan_holds_do_not_outlive_planning() -> None:
-    # Las reservas provisionales se sustituyen por la ruta real: un dron
-    # que se va deja libre su zona para los que planifican antes que él.
+    # Provisional reservations are replaced by the real route: a drone
+    # that leaves frees its zone for those who plan before it.
     graph = load_graph("valid/linear.txt")
     finder = make_finder(graph)
     w1, w2 = graph.get_zone("waypoint1"), graph.get_zone("waypoint2")
@@ -489,9 +490,9 @@ def test_plan_holds_do_not_outlive_planning() -> None:
 
 
 def test_plan_with_hold_blocking_earlier_planner_waits_not_crashes() -> None:
-    # Orden inverso: el de detrás planifica primero y encuentra al de
-    # delante "quieto". Espera; no choca. Es el coste de la reserva
-    # provisional (ver nearest_first).
+    # Reverse order: the drone behind plans first and finds the one ahead
+    # "standing still". It waits; it does not crash. That is the cost of
+    # the provisional reservation (see nearest_first).
     graph = load_graph("valid/linear.txt")
     finder = WhcaPathfinder(
         graph, AbstractDistance(graph), ReservationTable(graph),
@@ -502,10 +503,10 @@ def test_plan_with_hold_blocking_earlier_planner_waits_not_crashes() -> None:
     paths = finder.plan([FakeDrone(1, w2), FakeDrone(2, w1)], 0)
 
     assert paths[1][-1].zone is graph.end_hub
-    assert paths[2][0].connection is None, "D2 cede: D1 seguía en w2"
+    assert paths[2][0].connection is None, "D2 gives way: D1 was still at w2"
 
 
-# --- criterio de prioridad intercambiable -----------------------------
+# --- interchangeable priority criterion -------------------------------
 
 def test_default_order_is_by_id() -> None:
     graph = load_graph("valid/bottleneck.txt")
@@ -560,8 +561,8 @@ def test_nearest_first_orders_by_distance_then_id() -> None:
 
 
 def test_nearest_first_avoids_the_hold_cost() -> None:
-    # Mismo caso que el orden inverso de arriba: con nearest_first D1
-    # (delante) planifica primero y D2 le sigue sin esperar.
+    # Same case as the reverse order above: with nearest_first D1 (ahead)
+    # plans first and D2 follows it without waiting.
     graph = load_graph("valid/linear.txt")
     heuristic = AbstractDistance(graph)
     finder = WhcaPathfinder(

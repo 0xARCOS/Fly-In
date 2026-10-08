@@ -1,4 +1,4 @@
-# max_drones=-1 -> capacidad no positiva
+# max_drones=-1 -> non-positive capacity
 nb_drones: 1
 start_hub: start 0 0
 end_hub: goal 2 0

@@ -1,4 +1,4 @@
-# Dos rutas paralelas de igual coste: los drones deben repartirse, no hacer cola
+# Two parallel routes of equal cost: drones must split, not queue
 nb_drones: 2
 start_hub: start 0 0
 end_hub: goal 3 0
