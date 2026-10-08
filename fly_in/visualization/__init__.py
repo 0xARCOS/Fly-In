@@ -1,1 +1,1 @@
-"""Representación visual: terminal a color y repetición HTML."""
+"""Visual representation: pygame window and colored terminal log."""

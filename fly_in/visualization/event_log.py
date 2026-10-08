@@ -1,11 +1,11 @@
-"""El log de eventos de la terminal (SP10): lo que pasa, contado turno a turno.
+"""The terminal event log (SP10): what happens, told turn by turn.
 
-Acompaña a la ventana: mientras la ventana anima el turno k, la terminal
-escribe qué ha pasado en él. Escribe en `stream` (stderr): stdout
-sigue reservado a las líneas del subject.
+It goes along with the window: while the window animates turn k, the
+terminal writes what happened in it. It writes to `stream` (stderr):
+stdout stays reserved for the lines of the subject.
 
-No calcula nada de la simulación: lee la traza (los `Move`), las posiciones
-grabadas por `ReplayRecorder` y las replanificaciones del simulador.
+It computes nothing of the simulation: it reads the trace (the `Move`s),
+the positions recorded by `ReplayRecorder` and the simulator's replans.
 """
 
 from typing import Dict, List, Optional, Sequence, Set, TextIO
@@ -31,11 +31,11 @@ from fly_in.visualization.palette import (
 from fly_in.visualization.recorder import Position
 
 WIDTH = 78
-MAX_LISTED = 12   # drones en espera que se nombran antes de resumir
+MAX_LISTED = 12   # waiting drones named before summarizing
 
 
 class EventLog:
-    """Escribe el briefing, cada turno y el resumen final."""
+    """Write the briefing, each turn and the final summary."""
 
     def __init__(
         self,
@@ -47,7 +47,7 @@ class EventLog:
         window: int,
         target: Optional[int] = None,
     ) -> None:
-        """Prepara el log para un mapa concreto."""
+        """Set up the log for a specific map."""
         assert graph.start_hub is not None and graph.end_hub is not None
         self.graph = graph
         self.nb_drones = nb_drones
@@ -65,10 +65,10 @@ class EventLog:
         """'1 drone', '3 drones'."""
         return f"{count} {word}" + ("" if count == 1 else "s")
 
-    # --- piezas --------------------------------------------------------
+    # --- pieces --------------------------------------------------------
 
     def briefing(self, view: str) -> None:
-        """Cabecera de la misión: mapa, escuadrón, objetivo y vista."""
+        """Mission header: map, squad, target and view."""
         p = self.paint
         bar = "━" * (WIDTH - 22)
         self._say("")
@@ -96,7 +96,7 @@ class EventLog:
         self._say("")
 
     def countdown(self, value: str) -> None:
-        """Una línea de la cuenta atrás (3, 2, 1, GO)."""
+        """One line of the countdown (3, 2, 1, GO)."""
         color = UI_GOOD if value == "GO" else UI_WARN
         self._say("  " + self.paint(f"» {value}", fg=color, bold=True))
 
@@ -107,7 +107,7 @@ class EventLog:
         positions: Dict[str, Position],
         replans: Sequence[Replan] = (),
     ) -> None:
-        """El bloque del turno `number`."""
+        """The block of turn `number`."""
         p = self.paint
         line = " ".join(
             f"D{m.drone_id}-"
@@ -135,7 +135,7 @@ class EventLog:
         self._capacity_alerts(positions)
 
     def finish(self, metrics: Metrics, replans: int) -> None:
-        """El resumen final."""
+        """The final summary."""
         p = self.paint
         verdict = ""
         good = True
@@ -161,20 +161,20 @@ class EventLog:
         self._say("")
 
     def note(self, text: str, color: RGB = UI_DIM) -> None:
-        """Una línea suelta (avisos de la vista, del servidor…)."""
+        """A standalone line (notices from the view…)."""
         self._say("  " + self.paint(text, fg=color))
 
     def _legend(self) -> None:
-        """Leyenda de colores para los drones."""
+        """Color legend for the drones."""
         p = self.paint
         if self.nb_drones <= 8:
-            # Mostrar todos los drones si hay 8 o menos
+            # Show every drone if there are 8 or fewer
             drones = list(range(1, self.nb_drones + 1))
             parts = [p(f"D{d}", fg=Palette.drone_color(d), bold=True)
                      for d in drones]
             self._say("  " + p("DRONES: ", fg=UI_DIM) + " ".join(parts))
         elif self.nb_drones <= 16:
-            # Mostrar todos los drones si hay 16 o menos
+            # Show every drone if there are 16 or fewer
             drones = list(range(1, self.nb_drones + 1))
             line = "  " + p("DRONES: ", fg=UI_DIM)
             for i, d in enumerate(drones):
@@ -184,20 +184,20 @@ class EventLog:
                           bold=True)
             self._say(line)
         else:
-            # Mostrar primeros 8 + resumen si hay más de 16
+            # Show the first 8 + a summary if there are more than 16
             line = "  " + p("DRONES: ", fg=UI_DIM)
             for d in range(1, 9):
                 if d > 1:
                     line += "  "
                 line += p(f"D{d}", fg=Palette.drone_color(d),
                           bold=True)
-            line += p(f"  +{self.nb_drones - 8} más", fg=UI_DIM)
+            line += p(f"  +{self.nb_drones - 8} more", fg=UI_DIM)
             self._say(line)
 
-    # --- internos ------------------------------------------------------
+    # --- internals -----------------------------------------------------
 
     def _describe(self, move: Move) -> str:
-        """Un movimiento contado como evento."""
+        """A move told as an event."""
         p = self.paint
         tag = p(f"D{move.drone_id:<3}", fg=Palette.drone_color(move.drone_id),
                 bold=True)
@@ -225,7 +225,7 @@ class EventLog:
     def _holding(
         self, moves: Sequence[Move], positions: Dict[str, Position]
     ) -> None:
-        """Quién se queda quieto este turno, agrupado por zona."""
+        """Who stays still this turn, grouped by zone."""
         p = self.paint
         moved = {m.drone_id for m in moves}
         waiting: Dict[str, List[int]] = {}
@@ -248,7 +248,7 @@ class EventLog:
             )
 
     def _capacity_alerts(self, positions: Dict[str, Position]) -> None:
-        """Avisa cuando una zona se llena (solo al cambiar)."""
+        """Warn when a zone becomes full (only when it changes)."""
         counts: Dict[str, int] = {}
         for pos in positions.values():
             if pos[0] == "z":
@@ -267,6 +267,6 @@ class EventLog:
         self._full = full
 
     def _say(self, text: str) -> None:
-        """Escribe una línea y vacía el buffer: el log va en directo."""
+        """Write a line and flush the buffer: the log is live."""
         self.stream.write(text + "\n")
         self.stream.flush()

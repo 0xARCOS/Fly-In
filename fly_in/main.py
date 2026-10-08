@@ -1,11 +1,11 @@
-"""Punto de entrada de Fly-In: argumentos, lectura del mapa y errores.
+"""Fly-In entry point: arguments, map reading and errors.
 
-Es la frontera centralizada de excepciones: ningún error de mapa llega al
-usuario como traceback (Cap. III.1).
+It is the centralized exception boundary: no map error ever reaches the
+user as a traceback (Chap. III.1).
 
-stdout lleva SOLO las líneas de turno del subject (Cap. VII.5); la
-visualización, las métricas y los errores van a stderr. Así
-`make run > salida.txt` deja un fichero limpio que se puede contar con
+stdout carries ONLY the turn lines of the subject (Chap. VII.5); the
+visualization, the metrics and the errors go to stderr. That way
+`make run > output.txt` leaves a clean file that can be counted with
 `wc -l`.
 """
 
@@ -20,7 +20,12 @@ from fly_in.output.formatter import OutputFormatter
 from fly_in.pathfinding.abstract_distance import AbstractDistance
 from fly_in.simulation.errors import SimulationError
 from fly_in.simulation.metrics import Metrics
-from fly_in.simulation.simulator import Simulator
+from fly_in.simulation.capacity_observer import CapacityObserver
+from fly_in.simulation.simulator import (
+    ObserverGroup,
+    SimulationObserver,
+    Simulator,
+)
 from fly_in.visualization.palette import Painter
 from fly_in.visualization.recorder import ReplayRecorder
 from fly_in.visualization.session import (
@@ -31,11 +36,11 @@ from fly_in.visualization.session import (
 
 
 class FlyIn:
-    """La aplicación de línea de comandos."""
+    """The command-line application."""
 
     @staticmethod
     def main() -> int:
-        """Ejecuta el programa y devuelve el código de salida."""
+        """Run the program and return the exit code."""
         args = FlyIn.build_parser().parse_args()
         try:
             return FlyIn.run(args)
@@ -46,9 +51,9 @@ class FlyIn:
             print("\nInterrupted by user.", file=sys.stderr)
             return 130
         except BrokenPipeError:
-            # Quien leía la salida se ha ido (p. ej. `| head`). Se apuntan
-            # stdout y stderr a /dev/null para que Python no falle otra vez
-            # al vaciarlos al salir.
+            # Whoever was reading the output is gone (e.g. `| head`). Point
+            # stdout and stderr to /dev/null so Python does not fail again
+            # when flushing them on exit.
             devnull = os.open(os.devnull, os.O_WRONLY)
             os.dup2(devnull, sys.stdout.fileno())
             os.dup2(devnull, sys.stderr.fileno())
@@ -57,7 +62,7 @@ class FlyIn:
 
     @staticmethod
     def build_parser() -> argparse.ArgumentParser:
-        """Define los argumentos de línea de comandos."""
+        """Define the command-line arguments."""
         parser = argparse.ArgumentParser(
             description="Fly-In: drone routing simulator"
         )
@@ -88,14 +93,18 @@ class FlyIn:
             "-d", "--delay", type=FlyIn.non_negative_float, default=None,
             help="Seconds per turn (default: window 0.8, log 0.25)"
         )
+        parser.add_argument(
+            "--capacity-info", action="store_true",
+            help="Print zone and connection usage per turn on stderr"
+        )
         return parser
 
     @staticmethod
     def positive_int(value: str) -> int:
-        """Tipo de argparse: entero estrictamente positivo.
+        """Argparse type: strictly positive integer.
 
         Raises:
-            argparse.ArgumentTypeError: Si `value` no es un entero > 0.
+            argparse.ArgumentTypeError: If `value` is not an integer > 0.
         """
         try:
             number = int(value)
@@ -107,10 +116,10 @@ class FlyIn:
 
     @staticmethod
     def non_negative_float(value: str) -> float:
-        """Tipo de argparse: número real >= 0.
+        """Argparse type: real number >= 0.
 
         Raises:
-            argparse.ArgumentTypeError: Si `value` no es un número >= 0.
+            argparse.ArgumentTypeError: If `value` is not a number >= 0.
         """
         try:
             number = float(value)
@@ -122,11 +131,11 @@ class FlyIn:
 
     @staticmethod
     def read_map_file(path: Path) -> str:
-        """Lee el archivo de mapa y devuelve su contenido.
+        """Read the map file and return its content.
 
         Raises:
-            MapError: Si el archivo no existe, es un directorio, no hay
-                permiso o no es texto UTF-8.
+            MapError: If the file does not exist, is a directory, cannot be
+                read due to permissions or is not UTF-8 text.
         """
         if not path.exists():
             raise MapError(f"Map file not found: {path}")
@@ -143,13 +152,13 @@ class FlyIn:
 
     @staticmethod
     def make_painter() -> Painter:
-        """Color solo en terminal y sin la variable NO_COLOR."""
+        """Color only on a terminal and without the NO_COLOR variable."""
         enabled = sys.stderr.isatty() and "NO_COLOR" not in os.environ
         return Painter(enabled, Painter.supports_truecolor())
 
     @staticmethod
     def print_metrics(metrics: Metrics) -> None:
-        """Métricas secundarias en stderr, una por línea (--metrics)."""
+        """Secondary metrics on stderr, one per line (--metrics)."""
         for name, value in (
             ("turns", metrics.turns),
             ("drones", metrics.drones),
@@ -164,7 +173,7 @@ class FlyIn:
 
     @staticmethod
     def run(args: argparse.Namespace) -> int:
-        """Lee el mapa, simula, enseña la simulación y escribe la salida."""
+        """Read the map, simulate, show the simulation and write the output."""
         content = FlyIn.read_map_file(args.map_file)
         nb_drones, graph = MapParser.parse(content)
         assert graph.start_hub is not None and graph.end_hub is not None
@@ -185,18 +194,27 @@ class FlyIn:
 
         sim = Simulator(graph, nb_drones, args.window)
         recorder = ReplayRecorder(sim.drones)
-        trace = sim.run(recorder)
+        capacity = CapacityObserver(graph)
+        observer: SimulationObserver = recorder
+        if args.capacity_info:
+            observer = ObserverGroup(recorder, capacity)
+        trace = sim.run(observer)
         metrics = Metrics.from_trace(trace, nb_drones, sim.elapsed)
 
         if view in ("window", "log"):
-            # Sin terminal no se hacen pausas: nadie las está mirando.
+            # No pauses without a terminal: nobody is watching them.
             pace = delay if interactive or view == "window" else 0.0
             run = Run(graph, nb_drones, trace, recorder, metrics,
                       sim.replans, args.map_file.name, args.window, target)
             Session(view, run, paint, sys.stderr, pace).play()
 
-        for line in OutputFormatter.format_trace(trace):
+        for index, line in enumerate(OutputFormatter.format_trace(trace)):
             print(line)
+            if args.capacity_info:
+                # Flush stdout first so that, on a terminal, each capacity
+                # line ends up right below the line of its turn.
+                sys.stdout.flush()
+                print(capacity.lines[index], file=sys.stderr)
         sys.stdout.flush()
 
         if args.metrics:

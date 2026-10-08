@@ -1,1 +1,1 @@
-"""Búsqueda de rutas: Dijkstra, heurística y búsqueda cooperativa."""
+"""Pathfinding: Dijkstra, heuristic and cooperative search."""

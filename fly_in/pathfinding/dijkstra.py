@@ -1,18 +1,18 @@
 """
-    1 - Fila de prioridad con tupla de 4 elementos:
-        (coste_acumulado, -num_priority, contador_único, nodo_actual)
-        .. coste_acumulado: Menor número de turnos acumulados.
-        .. -num_priority: Ante empate de coste, favorece la ruta que pasa
-           por más zonas de tipo priority.
-        .. contador_unico: Previene errores de comparación de tipos entre
-           objetos Zone en Python (TypeError).
-        .. nodo_actual: La zona que se explora.
+    1 - Priority queue with a 4-element tuple:
+        (accumulated_cost, -num_priority, unique_counter, current_node)
+        .. accumulated_cost: Fewest accumulated turns.
+        .. -num_priority: On a cost tie, favors the route that goes
+           through more priority zones.
+        .. unique_counter: Prevents type comparison errors between
+           Zone objects in Python (TypeError).
+        .. current_node: The zone being explored.
 
-    2 - Costo en la zona de destino: Al moverse de la zona A a la zona B,
-        el coste añadido es B.movement_cost
-    3 - Ignorar Bloqueados: Si neighbor.is_traversable() es False, se omite
-    4 - Reconstrucción del camino: Devuelve la lista [origin, ..., target]
-        o None si la meta es inalcanzable.
+    2 - Cost at the destination zone: When moving from zone A to zone B,
+        the added cost is B.movement_cost
+    3 - Skip blocked zones: If neighbor.is_traversable() is False, skip it
+    4 - Path reconstruction: Returns the list [origin, ..., target]
+        or None if the goal is unreachable.
 """
 
 import heapq
@@ -23,24 +23,24 @@ from fly_in.models.graph import Graph
 
 class Dijkstra:
     """
-    Calcula la ruta estática de coste mínimo para un solo dron.
+    Compute the static minimum-cost route for a single drone.
     """
     def __init__(self, graph: Graph) -> None:
-        """Guarda el grafo sobre el que se harán las búsquedas."""
+        """Store the graph the searches will run on."""
         self.graph = graph
 
     def find_path(self, origin: Zone, target: Zone) -> Optional[List[Zone]]:
         """
-            Busca la ruta de coste mínimo entre origin y target.
+            Find the minimum-cost route between origin and target.
 
             return:
-                Lista de zonas desde origin hasta target (ambos incluidos),
-                o None si el objetivo es inalcanzable.
+                List of zones from origin to target (both included),
+                or None if the goal is unreachable.
         """
         if not origin.is_traversable() or not target.is_traversable():
             return None
 
-        # Si origen y destino son el mismo nodo
+        # If origin and target are the same node
         if origin.name == target.name:
             return [origin]
 
@@ -76,7 +76,7 @@ class Dijkstra:
                 new_prio = neg_prio - (1 if is_priority else 0)
                 new_key = (new_cost, new_prio)
 
-                # Si encontramos un camino más barato o de mejor prioridad
+                # If we found a cheaper path or one with better priority
                 if neighbor.name not in dist or new_key < dist[neighbor.name]:
                     dist[neighbor.name] = new_key
                     prev[neighbor.name] = current
@@ -90,13 +90,13 @@ class Dijkstra:
         self, origin: Zone, reverse: bool = False
     ) -> Dict[str, int]:
         """
-        Coste mínimo de `origin` a cada zona alcanzable, por nombre.
+        Minimum cost from `origin` to each reachable zone, by name.
 
-        reverse=False: coste de ir de origin a X (suma el coste de entrar
-        en cada zona destino).
-        reverse=True: coste de ir de X a origin. Como el coste es de
-        *entrada*, al expandir de `current` a `neighbor` se suma el de
-        `current`. Las zonas blocked nunca se visitan ni aparecen.
+        reverse=False: cost of going from origin to X (adds the cost of
+        entering each destination zone).
+        reverse=True: cost of going from X to origin. Since the cost is an
+        *entry* cost, expanding from `current` to `neighbor` adds the cost
+        of `current`. Blocked zones are never visited and never appear.
         """
         if not origin.is_traversable():
             return {}
@@ -131,13 +131,13 @@ class Dijkstra:
         return dist
 
     def path_cost(self, path: List[Zone]) -> int:
-        """Suma el movement_cost() de cada zona de la ruta salvo el origen."""
+        """Sum the movement_cost() of each zone on the route but the origin."""
         return sum(zone.movement_cost() for zone in path[1:])
 
     def _reconstruct_path(
         self, prev: Dict[str, Zone], target: Zone
     ) -> List[Zone]:
-        """Reconstruye la secuencia de zonas desde el objetivo al origen."""
+        """Rebuild the sequence of zones, from the goal back to the origin."""
         path: List[Zone] = []
         curr: Optional[Zone] = target
         while curr is not None:

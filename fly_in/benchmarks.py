@@ -1,11 +1,11 @@
-"""Benchmarks oficiales del subject (Cap. VII.7) y su runner (SP11).
+"""Official benchmarks of the subject (Chap. VII.7) and their runner (SP11).
 
-Uso: `make bench` o `python -m fly_in.benchmarks`. Imprime dos tablas:
+Usage: `make bench` or `python -m fly_in.benchmarks`. Prints two tables:
 
-1. Los 10 mapas oficiales con la configuración por defecto: turnos,
-   objetivo, si se cumple, tiempo y métricas secundarias.
-2. La comparación de configuraciones (W × criterio de prioridad), que es
-   la que justifica los valores por defecto.
+1. The 10 official maps with the default configuration: turns, target,
+   whether it is met, time and secondary metrics.
+2. The comparison of configurations (W × priority criterion), which is
+   what justifies the default values.
 """
 
 import time
@@ -28,12 +28,12 @@ OFFICIAL_DIR = Path(__file__).resolve().parent.parent / "maps" / "oficial_maps"
 
 @dataclass(frozen=True)
 class Benchmark:
-    """Un mapa de referencia y el máximo de turnos que pide el subject."""
+    """A reference map and the maximum number of turns the subject asks for."""
 
     category: str
-    path: str        # relativo a maps/oficial_maps
+    path: str        # relative to maps/oficial_maps
     drones: int
-    max_turns: int   # el challenger pide "batir 45": como mucho 44
+    max_turns: int   # the challenger asks to "beat 45": at most 44
     label: str
 
 
@@ -64,11 +64,11 @@ WINDOWS = (4, 8, 16)
 
 
 class BenchmarkSuite:
-    """Corre los mapas oficiales y compara configuraciones."""
+    """Run the official maps and compare configurations."""
 
     @staticmethod
     def target_for(map_path: Path) -> Optional[int]:
-        """Máximo de turnos del subject si `map_path` es un mapa oficial."""
+        """Subject's maximum turns if `map_path` is an official map."""
         for bench in BENCHMARKS:
             if map_path.name == Path(bench.path).name:
                 return bench.max_turns
@@ -78,7 +78,7 @@ class BenchmarkSuite:
     def measure(
         path: Path, window: int = DEFAULT_WINDOW, order: str = "id"
     ) -> Metrics:
-        """Simula `path` con esa configuración y devuelve sus métricas."""
+        """Simulate `path` with that configuration and return its metrics."""
         nb_drones, graph = MapParser.parse(path.read_text(encoding="utf-8"))
         started = time.perf_counter()
         sim = Simulator(graph, nb_drones, window,
@@ -89,7 +89,7 @@ class BenchmarkSuite:
 
     @staticmethod
     def report() -> int:
-        """Imprime la tabla oficial y la comparación de configuraciones."""
+        """Print the official table and the configuration comparison."""
         print(f"Official benchmarks (W={DEFAULT_WINDOW}, order=id)\n")
         header = (
             f"{'map':36} {'drones':>6} {'turns':>5} {'target':>7} {'ok':>3}"

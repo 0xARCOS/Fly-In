@@ -1,9 +1,9 @@
-"""Tests de Drone y Simulator (SP08).
+"""Tests for Drone and Simulator (SP08).
 
-El validador `assert_simulation_is_legal` lee la traza como un evaluador
-externo: solo conoce el grafo y las reglas del Cap. VII. No usa
-ReservationTable ni nada del simulador, para no comprobar que el código es
-coherente consigo mismo.
+The validator `assert_simulation_is_legal` reads the trace like an
+external evaluator: it only knows the graph and the rules of Chap. VII. It
+uses neither ReservationTable nor anything from the simulator, so it does
+not just check that the code agrees with itself.
 """
 
 from pathlib import Path
@@ -30,21 +30,21 @@ OFFICIAL_MAPS = sorted(
 
 
 def load(relative: str) -> Tuple[int, Graph]:
-    """(nb_drones, grafo) de un mapa de maps/."""
+    """(nb_drones, graph) of a map from maps/."""
     return MapParser.parse((MAPS_DIR / relative).read_text())
 
 
 def simulate(
     relative: str, window: int = 8
 ) -> Tuple[Simulator, List[List[Move]]]:
-    """Simula el mapa y devuelve el simulador y la traza."""
+    """Simulate the map and return the simulator and the trace."""
     nb_drones, graph = load(relative)
     sim = Simulator(graph, nb_drones, window)
     return sim, sim.run()
 
 
 def as_text(trace: Sequence[Sequence[Move]]) -> List[str]:
-    """La traza en el formato del Cap. VII.5 (lo que hará SP09)."""
+    """The trace in the format of Chap. VII.5 (what SP09 will do)."""
     return [
         " ".join(
             f"D{m.drone_id}-"
@@ -55,35 +55,35 @@ def as_text(trace: Sequence[Sequence[Move]]) -> List[str]:
     ]
 
 
-# --- el validador independiente ----------------------------------------
+# --- the independent validator -----------------------------------------
 
 def assert_simulation_is_legal(
     graph: Graph, nb_drones: int, trace: Sequence[Sequence[Move]]
 ) -> None:
-    """Recorre la traza y comprueba todas las reglas del Cap. VII.2/VII.3.
+    """Walk the trace and check every rule of Chap. VII.2/VII.3.
 
-    - Ninguna zona excede max_drones (start/end sin límite)
-    - Ninguna conexión excede max_link_capacity en ningún turno
-    - Ningún dron entra en una zona blocked
-    - Todo movimiento va por una conexión real entre origen y destino
-    - Un tránsito a restricted dura exactamente 2 turnos y no se
-      interrumpe; a una zona normal/priority, 1 turno
-    - Ningún dron aparece dos veces en el mismo turno
-    - Nadie se cruza de frente por la misma conexión
-    - Los entregados no vuelven a moverse, y al final todos lo están
+    - No zone exceeds max_drones (start/end unlimited)
+    - No connection exceeds max_link_capacity on any turn
+    - No drone enters a blocked zone
+    - Every move goes through a real connection between origin and target
+    - A transit to a restricted zone lasts exactly 2 turns and is not
+      interrupted; to a normal/priority zone, 1 turn
+    - No drone appears twice in the same turn
+    - Nobody crosses head-on through the same connection
+    - Delivered drones never move again, and in the end all of them are
     """
     assert graph.start_hub is not None and graph.end_hub is not None
     at: Dict[int, str] = {i: graph.start_hub.name for i in
                           range(1, nb_drones + 1)}
-    airborne: Dict[int, Tuple[str, str, str]] = {}   # id -> (orig, dst, con)
+    airborne: Dict[int, Tuple[str, str, str]] = {}   # id -> (orig, dst, conn)
     delivered: Set[int] = set()
 
     for number, moves in enumerate(trace, start=1):
         ids = [move.drone_id for move in moves]
-        assert len(ids) == len(set(ids)), f"turno {number}: dron repetido"
-        assert not delivered & set(ids), f"turno {number}: entregado se mueve"
+        assert len(ids) == len(set(ids)), f"turn {number}: repeated drone"
+        assert not delivered & set(ids), f"turn {number}: delivered moves"
         assert set(airborne) <= set(ids), (
-            f"turno {number}: un dron se quedó en el aire"
+            f"turn {number}: a drone stayed in the air"
         )
 
         on_link: Dict[str, int] = {}
@@ -91,31 +91,31 @@ def assert_simulation_is_legal(
         for move in moves:
             origin, target = move.origin.name, move.target.name
             conn = graph.connection_between(move.origin, move.target)
-            assert move.connection is conn, f"turno {number}: conexión falsa"
+            assert move.connection is conn, f"turn {number}: fake connection"
             assert target != origin
             assert move.target.zone_type is not ZoneType.BLOCKED
             assert at[move.drone_id] == origin, (
-                f"turno {number}: D{move.drone_id} no estaba en {origin}"
+                f"turn {number}: D{move.drone_id} was not at {origin}"
             )
             restricted = move.target.zone_type is ZoneType.RESTRICTED
 
             if move.drone_id in airborne:
                 assert airborne.pop(move.drone_id) == (
                     origin, target, conn.name
-                ), f"turno {number}: D{move.drone_id} cambió de rumbo"
-                assert move.arrives, "tercer turno en el aire"
+                ), f"turn {number}: D{move.drone_id} changed course"
+                assert move.arrives, "third turn in the air"
             elif restricted:
-                assert not move.arrives, "restricted en un solo turno"
+                assert not move.arrives, "restricted in a single turn"
                 airborne[move.drone_id] = (origin, target, conn.name)
             else:
-                assert move.arrives, "zona normal en dos turnos"
+                assert move.arrives, "normal zone in two turns"
 
             on_link[conn.name] = on_link.get(conn.name, 0) + 1
             assert on_link[conn.name] <= conn.max_link_capacity, (
-                f"turno {number}: {conn.name} por encima de su capacidad"
+                f"turn {number}: {conn.name} over its capacity"
             )
             assert (target, origin, conn.name) not in directions, (
-                f"turno {number}: cruce de frente en {conn.name}"
+                f"turn {number}: head-on crossing on {conn.name}"
             )
             directions.add((origin, target, conn.name))
 
@@ -131,12 +131,12 @@ def assert_simulation_is_legal(
         for zone_name, count in occupancy.items():
             zone = graph.get_zone(zone_name)
             assert count <= zone.max_drones, (
-                f"turno {number}: {count} drones en {zone_name}"
+                f"turn {number}: {count} drones in {zone_name}"
             )
 
-    assert not airborne, "la simulación acabó con drones en el aire"
-    assert delivered == set(range(1, nb_drones + 1)), "no llegaron todos"
-    assert not trace or trace[-1], "el último turno debe tener movimientos"
+    assert not airborne, "the simulation ended with drones in the air"
+    assert delivered == set(range(1, nb_drones + 1)), "not every drone arrived"
+    assert not trace or trace[-1], "the last turn must have moves"
 
 
 # --- Drone ---------------------------------------------------------------
@@ -158,7 +158,7 @@ def test_next_step_detects_desynchronised_path() -> None:
         drone.next_step(0)
 
 
-# --- tests de cierre -----------------------------------------------------
+# --- closing tests -------------------------------------------------------
 
 def test_single_drone_arrives_in_one_turn() -> None:
     _, trace = simulate("valid/single_drone.txt")
@@ -166,8 +166,8 @@ def test_single_drone_arrives_in_one_turn() -> None:
 
 
 def test_linear_matches_hand_calculation() -> None:
-    # D1 sale en el turno 1; D2 espera un turno (start-waypoint1 tiene
-    # capacidad 1) y le sigue a un paso de distancia.
+    # D1 leaves on turn 1; D2 waits one turn (start-waypoint1 has
+    # capacity 1) and follows one step behind.
     _, trace = simulate("valid/linear.txt")
     assert as_text(trace) == [
         "D1-waypoint1",
@@ -239,10 +239,10 @@ def test_invariants_hold_on_official_maps(map_file: str, window: int) -> None:
     assert_simulation_is_legal(graph, nb_drones, trace)
 
 
-# --- replanificación y límite de seguridad ------------------------------
+# --- replanning and safety limit ----------------------------------------
 
 def test_in_transit_drone_survives_replanning_every_turn() -> None:
-    # W = 2 → replanifica cada turno, también con D1 en el aire.
+    # W = 2 → replans every turn, also with D1 in the air.
     nb_drones, graph = MapParser.parse(
         (MAPS_DIR / "valid" / "restricted_chain.txt").read_text()
         .replace("nb_drones: 1", "nb_drones: 3")
@@ -255,17 +255,17 @@ def test_exhausted_path_forces_replanning() -> None:
     sim, _ = simulate("valid/linear.txt")
     fresh = Simulator(sim.graph, 1, window=8)
     drone = fresh.drones[0]
-    assert fresh._must_replan(0, [drone])       # cadencia
-    assert fresh._must_replan(1, [drone])       # sin ruta
+    assert fresh._must_replan(0, [drone])       # cadence
+    assert fresh._must_replan(1, [drone])       # no route
     drone.path = [Step(drone.current_zone, 2, None, 1)]
-    assert not fresh._must_replan(1, [drone])   # con ruta, fuera de cadencia
+    assert not fresh._must_replan(1, [drone])   # with a route, off cadence
 
 
 def test_replans_every_half_window() -> None:
     _, graph = load("valid/linear.txt")
     sim = Simulator(graph, 1, window=8)
     drone = sim.drones[0]
-    drone.path = [Step(drone.current_zone, 99, None, 1)]  # nunca agotada
+    drone.path = [Step(drone.current_zone, 99, None, 1)]  # never exhausted
     replans = [t for t in range(12) if sim._must_replan(t, [drone])]
     assert replans == [0, 4, 8]
     assert Simulator(graph, 1, window=1).replan_every == 1
@@ -299,7 +299,7 @@ def test_capacity_violation_is_caught_at_the_turn_it_happens() -> None:
 
 
 def test_official_benchmarks() -> None:
-    # Resultado actual (W=8, orden por id). Si cambia, que sea a propósito.
+    # Current result (W=8, order by id). If it changes, let it be on purpose.
     expected: Dict[str, int] = {
         "easy/01_linear_path.txt": 4,
         "easy/02_simple_fork.txt": 4,

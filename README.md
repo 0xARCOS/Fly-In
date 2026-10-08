@@ -38,6 +38,7 @@ same `import pygame` API), for the graphical window; `flake8`, `mypy` and
 $ make install                                   # creates .venv and installs everything (also plain `make`)
 $ make run MAP=maps/oficial_maps/easy/01_linear_path.txt
 $ make run MAP=maps/valid/bottleneck.txt ARGS="--delay 1 --metrics"
+$ make capacity MAP=maps/valid/bottleneck.txt ARGS=-q  # per-turn capacity usage
 $ make debug MAP=maps/valid/bottleneck.txt       # the program under pdb
 $ make bench                                     # official benchmarks + config comparison
 $ make test                                      # test suite
@@ -57,6 +58,7 @@ $ .venv/bin/python -m fly_in.main MAP [options]
 | `--view V` | `window`: pygame window + event log · `log`: event log only · `auto` (default): `window` if display available, else `log` |
 | `-d S`, `--delay S` | Seconds per turn (defaults: window 0.8, log 0.25; `0` = as fast as possible) |
 | `--metrics` | Print secondary metrics on `stderr` |
+| `--capacity-info` | After each turn line, print zone and connection usage on `stderr` (`Zone X: Y/Z drones, Connection A-B: Y/Z capacity used`) |
 | `-q`, `--quiet` | No visualization at all |
 
 Colors are used only when `stderr` is a terminal and the `NO_COLOR`
@@ -211,32 +213,25 @@ advance **turn by turn together**: a pygame window and an event log in the
 terminal. Both read the recorded simulation; neither computes anything, so
 what they show is exactly what `stdout` says.
 
-**The pygame window.** Everything is drawn with `pygame.draw` primitives
-(lines, polygons, circles, arcs) and text; there are no image files.
+**The pygame window.** A deliberately minimal view, made to check the run
+at a glance: white background, `pygame.draw` circles, lines and text, no
+image files.
 
-It opens on a **mission briefing with a 3-2-1-GO countdown**.
-
-During the simulation, the map shows real-time capacity and drone positions:
-
-- The **map is laid out from the file's own coordinates**. Zones are glowing
-  hexagons whose decoration tells their type: a rotating amber dashed ring
-  for `restricted`, a gold star for `priority`, a red cross for `blocked`,
-  pulsing platforms for the hubs. Colors come from `color=` (named colors,
-  `#rrggbb`, an animated `rainbow`, and a stable hash-derived hue for any
-  other word; very dark colors are lifted so they stay visible).
-- **Capacity pips** above each zone fill up as drones arrive, and a full zone
-  pulses red — that is where the bottleneck is, and why a drone waits.
-- **Drones are small quadcopters** with spinning rotors and fading trails. A
-  drone flying into a `restricted` zone rises, casts a shadow and hovers over
-  its connection for its two turns in the air.
-- Links used in the current turn **light up with a flow in the direction of
-  travel**, in the moving drone's color; links into `restricted` zones are
-  dashed. Deliveries burst into sparks with a "+1", and each WHCA\* replan
-  sends a radar ring across the map.
-
-At completion, the **MISSION COMPLETE** card shows the number of turns and
-the moves that were executed: total moves, moves per turn, average delivery
-turn, waits, peak airborne and compute time.
+- The **map is laid out from the file's own coordinates**. Zones are flat
+  pastel circles with a thin outline, colored by `color=` (named colors,
+  `#rrggbb`, or a stable hash-derived hue for any other word) or, without
+  it, by type: gray `normal`, yellow `priority`, orange `restricted`, dark
+  gray with a cross `blocked`, green start and blue goal.
+- Under each zone: its name and `occupied/max_drones`; a full zone turns its
+  outline and label red. The goal shows how many drones have been delivered.
+- **Drones are saturated dots with a dark outline and their number**, so
+  they never blend with a zone of the same hue. They glide between zones
+  with a smooth ease-in/ease-out; a drone flying into a `restricted` zone
+  waits on the middle of its (dashed) connection for its two turns in the
+  air, and a delivered drone shrinks into the goal.
+- One status line at the top: map, turn, delivered count and the keys. At
+  the end it shows the number of turns against the target until a key is
+  pressed.
 
 - **Keys**: `SPACE` pauses and resumes the animation (the terminal log waits
   for it); `ESC`, `Q` or closing the window removes it at once and the run
@@ -282,11 +277,14 @@ cannot appear.
 
 **Why it helps.** The subject's output says *what* each drone does, not
 *why*. The window shows the constraints behind each decision — full zones,
-two-turn flights, busy links, replans — on the real layout of the map. The
-event log colors each drone with its own color and shows a legend, making it
-easy to track individual drones. Together they reveal the *why* of every move,
-and the log gives the exact per-turn detail with the same line as `stdout`, so
-the two can be checked against each other.
+two-turn flights, link capacities — on the real layout of the map, with
+nothing else competing for attention. The event log adds what the window
+leaves out (replans, who is holding where) and colors each drone with its
+own color and a legend, making it easy to track individual drones. Together
+they reveal the *why* of every move, and the log gives the exact per-turn
+detail with the same line as `stdout`, so the two can be checked against each
+other. For the raw numbers, `--capacity-info` prints the usage of every zone
+and connection after each turn.
 
 ## Resources
 
@@ -303,3 +301,39 @@ the two can be checked against each other.
   `pygame.display`, `pygame.time.Clock`, `pygame.event`.
 - ECMA-48 / "ANSI escape code" references for terminal colors, and
   [no-color.org](https://no-color.org) for the `NO_COLOR` convention.
+
+**How AI was used.** Claude (Anthropic) was used as a pair programmer:
+
+- to write and maintain the Spanish design documentation (the build guides
+  for each stage and the narrative documents), kept outside this delivery;
+- to review the parser and domain model and fix the issues found before the
+  reservation table;
+- to implement, together with their tests, the cooperative search
+  (`whca.py`), the simulator (`simulation/`), the output formatter, the
+  terminal and pygame visualizations and the benchmark runner, following
+  the design written in the build guides;
+- to design the independent invariant validator and to mutation-test the
+  suite (introducing bugs on purpose to check that the tests catch them);
+- to audit the project against the subject (docstrings, object-oriented
+  structure, exception handling, resource management), which led to moving
+  every module-level helper into a class and handling closed pipes, and to
+  write the defense documents and the flow diagrams;
+- to give each drone one stable color (Okabe-Ito, then golden-angle hues)
+  shared by the window and the event log, with a legend, and to prepare the
+  defense material (per-stage narratives, flow diagrams and the
+  `--capacity-info` live-coding guide);
+- to map every subject and evaluation-sheet requirement to the command that
+  covers it and remove what nothing required or did not work (a terminal HUD,
+  a `make` menu with loading screens, turn-by-turn navigation keys and four
+  redundant flags), and to check every document against the current code;
+- to prepare the delivery: translate every code comment and docstring to
+  English and bring the documentation up to date with the minimal window
+  and `--capacity-info`.
+
+An earlier version showed the animation in a web browser. It was replaced by
+the pygame window so that every delivered line of code is Python that can be
+explained and defended in the peer review.
+
+Every design decision is documented with its reasons in the build guides,
+and every piece of AI-generated code was read, run and tested before being
+kept.

@@ -1,4 +1,4 @@
-# Dos zonas con el mismo nombre -> nombre de zona no es unico
+# Two zones with the same name -> zone name is not unique
 nb_drones: 2
 start_hub: start 0 0
 end_hub: goal 3 0

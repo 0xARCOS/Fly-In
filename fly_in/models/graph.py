@@ -1,4 +1,4 @@
-"""Grafo del mapa: zonas, conexiones y las reglas que las relacionan."""
+"""Map graph: zones, connections and the rules that relate them."""
 
 from typing import Dict, FrozenSet, List, Optional
 
@@ -9,35 +9,35 @@ ROLES = {"hub", "start_hub", "end_hub"}
 
 
 class Graph:
-    """Grafo del mapa: zonas (nodos) y conexiones (aristas) entre ellas.
+    """Map graph: zones (nodes) and the connections (edges) between them.
 
-    Aplica aquí, y no en el parser, las reglas que dependen del estado
-    acumulado de todo el archivo:
-    - Nombres de zona únicos
-    - Como mucho un start_hub y un end_hub
-    - connection: solo referencia zonas ya definidas antes en el archivo
-    - Sin conexiones duplicadas (a-b == b-a)
+    The rules that depend on the accumulated state of the whole file are
+    enforced here, not in the parser:
+    - Unique zone names
+    - At most one start_hub and one end_hub
+    - connection: only references zones defined earlier in the file
+    - No duplicate connections (a-b == b-a)
 
-    Es inmutable tras el parseo: la ocupación turno a turno vive fuera.
+    It is immutable after parsing: turn-by-turn occupancy lives elsewhere.
     """
 
     def __init__(self) -> None:
-        """Crea un grafo vacío."""
+        """Create an empty graph."""
         self.zones: Dict[str, Zone] = {}
         self.start_hub: Optional[Zone] = None
         self.end_hub: Optional[Zone] = None
         self.connections: List[Connection] = []
-        # Índices para que neighbors() y connection_between() sean O(1):
-        # el pathfinding los llama en cada expansión.
+        # Indexes so that neighbors() and connection_between() are O(1):
+        # pathfinding calls them on every expansion.
         self._adjacency: Dict[str, List[Connection]] = {}
         self._by_pair: Dict[FrozenSet[str], Connection] = {}
 
     def add_zone(self, zone: Zone, role: str) -> None:
-        """Añade una zona con su rol ('hub', 'start_hub' o 'end_hub').
+        """Add a zone with its role ('hub', 'start_hub' or 'end_hub').
 
         Raises:
-            ValueError: Si el rol es desconocido, el nombre está repetido o
-                ya existe un start_hub/end_hub.
+            ValueError: If the role is unknown, the name is repeated or
+                there is already a start_hub/end_hub.
         """
         if role not in ROLES:
             raise ValueError(f"Unknown zone role: '{role}'")
@@ -60,11 +60,11 @@ class Graph:
     def add_connection(
         self, origin: str, destination: str, max_link_capacity: int
     ) -> None:
-        """Conecta dos zonas ya definidas.
+        """Connect two already defined zones.
 
         Raises:
-            ValueError: Si alguna zona no existe o la conexión está repetida
-                (en cualquiera de los dos sentidos).
+            ValueError: If either zone does not exist or the connection is
+                repeated (in either direction).
         """
         if origin not in self.zones:
             raise ValueError(
@@ -91,27 +91,27 @@ class Graph:
         self._adjacency[destination].append(connection)
 
     def get_zone(self, name: str) -> Zone:
-        """Busca una zona por nombre, o falla con un mensaje claro.
+        """Look up a zone by name, or fail with a clear message.
 
         Raises:
-            ValueError: Si no existe ninguna zona con ese nombre.
+            ValueError: If there is no zone with that name.
         """
         if name not in self.zones:
             raise ValueError(f"Unknown zone: '{name}'")
         return self.zones[name]
 
     def neighbors(self, zone: Zone) -> List[Connection]:
-        """Conexiones que tocan `zone`, en el orden en que se definieron.
+        """Connections touching `zone`, in the order they were defined.
 
-        Devuelve una copia: modificarla no altera el grafo.
+        Returns a copy: modifying it does not alter the graph.
         """
         return list(self._adjacency.get(zone.name, []))
 
     def connection_between(self, zone_a: Zone, zone_b: Zone) -> Connection:
-        """Conexión que une `zone_a` y `zone_b`, en cualquier sentido.
+        """Connection joining `zone_a` and `zone_b`, in either direction.
 
         Raises:
-            ValueError: Si las dos zonas no están conectadas.
+            ValueError: If the two zones are not connected.
         """
         pair = frozenset((zone_a.name, zone_b.name))
         if pair not in self._by_pair:

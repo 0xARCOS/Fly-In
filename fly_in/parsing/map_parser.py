@@ -1,23 +1,23 @@
-"""Parser del formato de mapa de Fly-In (Cap. VI y VII.4).
+"""Parser of the Fly-In map format (Chap. VI and VII.4).
 
-Reglas de validación:
+Validation rules:
 
-- Primera línea no vacía: nb_drones: <entero positivo>
-- Exactamente un start_hub: y un end_hub: en todo el archivo
-- Nombres de zona únicos, sin guiones ni espacios
-- Coordenadas siempre enteras (pueden ser negativas)
-- connection: solo referencia zonas ya definidas antes en el archivo
-- Sin conexiones duplicadas (a-b == b-a) ni conexiones de una zona consigo
-- Metadatos: tokens clave=valor, sin claves ni valores vacíos, sin claves
-  repetidas, y solo claves válidas para el tipo de línea
-- zone= solo uno de: normal, restricted, priority, blocked
-- max_drones y max_link_capacity enteros positivos si están presentes
-- max_drones en start_hub/end_hub se ignora (no es error): su capacidad es
-  ilimitada
-- start_hub y end_hub no pueden ser 'blocked'
-- Todo lo que hay tras '#' es comentario
-- Cualquier fallo → MapParseError con línea y causa, o MapValidationError
-  si el fallo es del archivo entero
+- First non-empty line: nb_drones: <positive integer>
+- Exactly one start_hub: and one end_hub: in the whole file
+- Unique zone names, with no dashes or spaces
+- Coordinates are always integers (they may be negative)
+- connection: only references zones defined earlier in the file
+- No duplicate connections (a-b == b-a) and no zone connected to itself
+- Metadata: key=value tokens, no empty keys or values, no repeated keys,
+  and only the keys valid for the type of line
+- zone= only one of: normal, restricted, priority, blocked
+- max_drones and max_link_capacity are positive integers when present
+- max_drones on start_hub/end_hub is ignored (not an error): their
+  capacity is unlimited
+- start_hub and end_hub cannot be 'blocked'
+- Everything after '#' is a comment
+- Any failure → MapParseError with line and cause, or MapValidationError
+  if the failure concerns the whole file
 """
 
 from typing import Dict, FrozenSet, List, Tuple
@@ -32,18 +32,18 @@ ZONE_ROLES = ("hub", "start_hub", "end_hub")
 
 
 class MapParser:
-    """Convierte el texto de un mapa en `(nb_drones, Graph)`."""
+    """Turn the text of a map into `(nb_drones, Graph)`."""
 
     @staticmethod
     def parse(map_content: str) -> Tuple[int, Graph]:
-        """Parsea y valida un mapa completo.
+        """Parse and validate a complete map.
 
         Returns:
-            Tupla (número de drones, grafo con start_hub y end_hub).
+            Tuple (number of drones, graph with start_hub and end_hub).
 
         Raises:
-            MapParseError: Si una línea concreta es inválida.
-            MapValidationError: Si el archivo está vacío o le falta
+            MapParseError: If a specific line is invalid.
+            MapValidationError: If the file is empty or lacks
                 start_hub/end_hub.
         """
         cleaned = MapParser.clean_lines(map_content)
@@ -79,10 +79,10 @@ class MapParser:
 
     @staticmethod
     def _parse_line(content: str, graph: Graph) -> None:
-        """Parsea una línea de zona o de conexión y la añade al grafo.
+        """Parse a zone or connection line and add it to the graph.
 
         Raises:
-            ValueError: Si la línea no es válida.
+            ValueError: If the line is not valid.
         """
         if content.startswith("connection:"):
             origin, destination, meta = MapParser.parse_connection_line(
@@ -101,7 +101,7 @@ class MapParser:
         zone_type = MapParser.parse_zone_type(meta.get("zone", "normal"))
         max_drones: float
         if role in ("start_hub", "end_hub"):
-            # Cap. VII.4: max_drones se ignora aquí, aunque sea inválido.
+            # Chap. VII.4: max_drones is ignored here, even if invalid.
             max_drones = UNLIMITED
             if zone_type is ZoneType.BLOCKED:
                 raise ValueError(f"'{role}' can't be a blocked zone")
@@ -114,18 +114,18 @@ class MapParser:
             role,
         )
 
-    # --- piezas de una línea -------------------------------------------
+    # --- pieces of a line ----------------------------------------------
 
     @staticmethod
     def clean_lines(map_content: str) -> List[Tuple[int, str]]:
-        """Limpia el contenido de un archivo de mapa.
+        """Clean the content of a map file.
 
-        - Elimina espacios al principio y al final de cada línea
-        - Ignora comentarios (todo lo que esté a la derecha de #)
-        - Omite líneas vacías (o que se queden vacías tras quitar comentarios)
+        - Strips spaces at the start and end of each line
+        - Ignores comments (everything to the right of #)
+        - Skips empty lines (or lines left empty after removing comments)
 
         Returns:
-            Lista de tuplas (número de línea original 1-based, texto limpio).
+            List of tuples (original 1-based line number, clean text).
         """
         result: List[Tuple[int, str]] = []
         for line_index, line in enumerate(map_content.splitlines(), start=1):
@@ -138,12 +138,12 @@ class MapParser:
     def parse_metadata(
         metadata_str: str, allowed_keys: FrozenSet[str]
     ) -> Dict[str, str]:
-        """Convierte un bloque '[k=v k2=v2]' en diccionario.
+        """Turn a '[k=v k2=v2]' block into a dictionary.
 
         Raises:
-            ValueError: Si faltan los corchetes, un token no es clave=valor, la
-                clave o el valor están vacíos, una clave se repite o no está en
-                `allowed_keys`.
+            ValueError: If the brackets are missing, a token is not
+                key=value, the key or the value is empty, a key is repeated
+                or it is not in `allowed_keys`.
         """
         stripped = metadata_str.strip()
         if not stripped.startswith("[") or not stripped.endswith("]"):
@@ -170,10 +170,10 @@ class MapParser:
 
     @staticmethod
     def parse_positive_int(value: str, field: str) -> int:
-        """Convierte `value` en entero positivo.
+        """Turn `value` into a positive integer.
 
         Raises:
-            ValueError: Si no es un entero o no es mayor que cero.
+            ValueError: If it is not an integer or not greater than zero.
         """
         try:
             number = int(value)
@@ -187,10 +187,10 @@ class MapParser:
 
     @staticmethod
     def parse_zone_type(value: str) -> ZoneType:
-        """Convierte el texto de 'zone=' en ZoneType.
+        """Turn the text of 'zone=' into a ZoneType.
 
         Raises:
-            ValueError: Si no es uno de los cuatro tipos válidos.
+            ValueError: If it is not one of the four valid types.
         """
         try:
             return ZoneType(value)
@@ -204,14 +204,14 @@ class MapParser:
     def parse_zone_line(
         line: str,
     ) -> Tuple[str, str, int, int, Dict[str, str]]:
-        """Disecciona una línea de zona.
+        """Split a zone line into its parts.
 
         Input: "hub: roof1 3 4 [zone=restricted]"
         Output: ("hub", "roof1", 3, 4, {"zone": "restricted"})
 
         Raises:
-            ValueError: Si el formato, el nombre, las coordenadas o los
-                metadatos no son válidos.
+            ValueError: If the format, the name, the coordinates or the
+                metadata are not valid.
         """
         if ":" not in line:
             raise ValueError("Line must contain ':' to separate the role")
@@ -246,15 +246,15 @@ class MapParser:
 
     @staticmethod
     def parse_connection_line(line: str) -> Tuple[str, str, Dict[str, str]]:
-        """Disecciona una línea de conexión.
+        """Split a connection line into its parts.
 
         Input: "connection: corridorA-tunnelB [max_link_capacity=2]"
         Output: ("corridorA", "tunnelB", {"max_link_capacity": "2"})
 
         Raises:
-            ValueError: Si no hay exactamente dos zonas separadas por '-',
-                una está vacía, se conecta una zona consigo misma o los
-                metadatos no son válidos.
+            ValueError: If there are not exactly two zones separated by
+                '-', one is empty, a zone is connected to itself or the
+                metadata are not valid.
         """
         if not line.startswith("connection:"):
             raise ValueError("Line must start with 'connection:'")

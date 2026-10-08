@@ -1,4 +1,4 @@
-"""Tests de OutputFormatter (SP09): el formato del Cap. VII.5, literal."""
+"""Tests for OutputFormatter (SP09): the format of Chap. VII.5, verbatim."""
 
 import re
 from pathlib import Path
@@ -36,20 +36,20 @@ connection: b-goal
 
 
 def graph() -> Graph:
-    """Grafo pequeño con una restricted y dos zonas normales."""
+    """Small graph with one restricted zone and two normal zones."""
     return MapParser.parse(MAP)[1]
 
 
 def move(g: Graph, drone: int, frm: str, to: str, arrives: bool = True
          ) -> Move:
-    """Un Move entre dos zonas del grafo."""
+    """A Move between two zones of the graph."""
     origin, target = g.get_zone(frm), g.get_zone(to)
     return Move(drone, origin, target,
                 g.connection_between(origin, target), arrives)
 
 
 def simulate(relative: str) -> Tuple[int, List[str]]:
-    """(número de turnos de la traza, líneas formateadas)."""
+    """(number of turns of the trace, formatted lines)."""
     nb_drones, g = MapParser.parse((MAPS_DIR / relative).read_text())
     trace = Simulator(g, nb_drones).run()
     return len(trace), OutputFormatter.format_trace(trace)
@@ -123,7 +123,7 @@ def test_bottleneck_matches_hand_written_output() -> None:
 @pytest.mark.parametrize("map_file", ALL_MAPS)
 def test_every_line_has_the_subject_format(map_file: str) -> None:
     turns, lines = simulate(map_file)
-    assert len(lines) == turns, "una línea por turno"
+    assert len(lines) == turns, "one line per turn"
     for line in lines:
         assert LINE.match(line), line
         assert "\033" not in line

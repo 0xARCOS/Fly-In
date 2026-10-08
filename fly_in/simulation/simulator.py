@@ -1,15 +1,16 @@
-"""El bucle turno a turno (SP08).
+"""The turn-by-turn loop (SP08).
 
-Cada turno tiene tres momentos:
+Each turn has three moments:
 
-1. Replanificar, si toca: al inicio de cada media ventana, o antes si a
-   algún dron se le ha agotado la ruta.
-2. Fase 1, DECIDIR: cada dron dice qué hará este turno. Nadie se mueve.
-3. Fase 2, APLICAR: todos los movimientos a la vez, y verificación de que
-   el nuevo estado respeta las capacidades.
+1. Replan, when due: at the start of every half window, or earlier if
+   some drone has run out of route.
+2. Phase 1, DECIDE: each drone says what it will do this turn. Nobody
+   moves.
+3. Phase 2, APPLY: every move at once, and a check that the new state
+   honors the capacities.
 
-Usa la convención de tiempo de ReservationTable (SP06): el turno `t` lleva
-del instante `t` al `t+1`, y es la línea `t+1` de la salida.
+It uses the time convention of ReservationTable (SP06): turn `t` goes from
+instant `t` to `t+1`, and it is line `t+1` of the output.
 """
 
 import time
@@ -33,20 +34,20 @@ from fly_in.pathfinding.whca import (
 from fly_in.simulation.drone import Drone, DroneState
 from fly_in.simulation.errors import SimulationError
 
-# Turnos máximos = nb_drones * zonas * MAX_TURNS_FACTOR. Un dron solo tarda
-# como mucho 2 por zona (restricted); en fila india, nb_drones veces eso.
-# El factor 4 deja el doble de margen sobre ese peor caso razonable.
+# Max turns = nb_drones * zones * MAX_TURNS_FACTOR. A lone drone takes at
+# most 2 per zone (restricted); in single file, nb_drones times that.
+# Factor 4 leaves twice the margin over that reasonable worst case.
 MAX_TURNS_FACTOR = 4
 
 
 @dataclass(frozen=True)
 class Move:
-    """Lo que hizo un dron en un turno, tal como lo necesita la salida.
+    """What a drone did in a turn, as the output needs it.
 
-    `arrives` es False solo en el primer turno de un tránsito hacia una
-    restricted: el dron acaba el turno en `connection` (se imprime
-    `D<id>-<conexión>`). En el resto de casos acaba en `target`
-    (`D<id>-<zona>`).
+    `arrives` is False only on the first turn of a transit towards a
+    restricted zone: the drone ends the turn on `connection` (it prints
+    `D<id>-<connection>`). In every other case it ends at `target`
+    (`D<id>-<zone>`).
     """
 
     drone_id: int
@@ -58,50 +59,50 @@ class Move:
 
 @dataclass(frozen=True)
 class Replan:
-    """Una replanificación: cuándo, a cuántos y cuánto costó."""
+    """A replan: when, for how many drones and how long it took."""
 
-    turn: int         # instante en que se replanifica
-    grounded: int     # drones replanificados
-    airborne: int     # drones en el aire, conservados con keep
-    seconds: float    # tiempo de cálculo de plan()
+    turn: int         # instant at which it replans
+    grounded: int     # replanned drones
+    airborne: int     # drones in the air, kept with keep
+    seconds: float    # compute time of plan()
 
 
 class SimulationObserver(Protocol):
-    """Quien quiera ver la simulación mientras ocurre (SP10).
+    """Anyone who wants to watch the simulation as it happens (SP10).
 
-    El simulador le avisa tras aplicar cada turno. El observador solo lee:
-    no debe modificar los drones.
+    The simulator notifies it after applying each turn. The observer only
+    reads: it must not modify the drones.
     """
 
     def on_turn(
         self, turn: int, moves: Sequence[Move], drones: Sequence["Drone"]
     ) -> None:
-        """`turn` es el número de línea de salida recién completado."""
+        """`turn` is the number of the output line just completed."""
         ...
 
 
 class ObserverGroup:
-    """Reparte cada turno entre varios observadores (terminal + HTML)."""
+    """Hand each turn to several observers (recorder + capacity info)."""
 
     def __init__(self, *observers: SimulationObserver) -> None:
-        """Agrupa `observers`, que se llaman en ese orden."""
+        """Group `observers`, which are called in that order."""
         self.observers = observers
 
     def on_turn(
         self, turn: int, moves: Sequence[Move], drones: Sequence["Drone"]
     ) -> None:
-        """Pasa el turno a cada observador."""
+        """Pass the turn to every observer."""
         for observer in self.observers:
             observer.on_turn(turn, moves, drones)
 
 
-# Decisión de la fase 1: el dron, el paso que ejecuta y el movimiento que
-# produce (None = espera en el sitio: no sale en la salida).
+# Phase 1 decision: the drone, the step it executes and the move it
+# produces (None = wait in place: it does not appear in the output).
 Decision = Tuple[Drone, Step, Optional[Move]]
 
 
 class Simulator:
-    """Mueve todos los drones de start_hub a end_hub, turno a turno."""
+    """Move every drone from start_hub to end_hub, turn by turn."""
 
     def __init__(
         self,
@@ -110,12 +111,12 @@ class Simulator:
         window: int = DEFAULT_WINDOW,
         order: Optional[PlanningOrder] = None,
     ) -> None:
-        """Prepara la simulación con `nb_drones` drones en start_hub.
+        """Set up the simulation with `nb_drones` drones at start_hub.
 
         Raises:
-            SimulationError: Si el mapa no tiene start_hub/end_hub o si
-                end_hub es inalcanzable: se detecta en el turno 0, no tras
-                cientos de turnos dando vueltas.
+            SimulationError: If the map has no start_hub/end_hub or if
+                end_hub is unreachable: it is detected at turn 0, not after
+                hundreds of turns going round in circles.
         """
         if graph.start_hub is None or graph.end_hub is None:
             raise SimulationError("The map needs a start_hub and an end_hub")
@@ -131,8 +132,8 @@ class Simulator:
             graph, self.heuristic, self.table, window, order
         )
         self.window = window
-        # W // 2: siempre quedan W/2 turnos de cooperación por delante. Con
-        # W = 1 sería 0, así que como mínimo se replanifica cada turno.
+        # W // 2: there are always W/2 turns of cooperation ahead. With
+        # W = 1 it would be 0, so at the very least it replans every turn.
         self.replan_every = max(1, window // 2)
         self.max_turns = max(
             1, nb_drones * len(graph.zones) * MAX_TURNS_FACTOR
@@ -142,7 +143,7 @@ class Simulator:
             for drone_id in range(1, nb_drones + 1)
         ]
         self._goal: Zone = graph.end_hub
-        self.elapsed = 0.0   # segundos de cálculo del último run()
+        self.elapsed = 0.0   # compute seconds of the last run()
         self.replans: List[Replan] = []
 
     # --- API -----------------------------------------------------------
@@ -150,24 +151,24 @@ class Simulator:
     def run(
         self, observer: Optional[SimulationObserver] = None
     ) -> List[List[Move]]:
-        """Ejecuta la simulación completa.
+        """Run the whole simulation.
 
         Args:
-            observer: Se le llama tras cada turno (la visualización).
+            observer: Called after each turn (the visualization).
 
         Returns:
-            La traza: una lista de movimientos por turno. Su longitud es
-            el número de turnos, la métrica del subject (Cap. VII.6).
+            The trace: one list of moves per turn. Its length is the number
+            of turns, the metric of the subject (Chap. VII.6).
 
         Raises:
-            SimulationError: Si no converge antes de `max_turns`, si la
-                planificación no cabe en la tabla o si algún turno viola
-                una capacidad (bug de SP06/SP07).
+            SimulationError: If it does not converge before `max_turns`, if
+                the planning does not fit in the table or if some turn
+                breaks a capacity (bug in SP06/SP07).
         """
         trace: List[List[Move]] = []
         turn = 0
         started = time.perf_counter()
-        watching = 0.0   # tiempo dentro del observador: no es cálculo
+        watching = 0.0   # time inside the observer: not compute time
         while True:
             active = [drone for drone in self.drones if drone.is_active]
             if not active:
@@ -187,25 +188,25 @@ class Simulator:
                 observer.on_turn(turn, moves, self.drones)
                 watching += time.perf_counter() - paused
 
-    # --- replanificación -----------------------------------------------
+    # --- replanning ----------------------------------------------------
 
     def _must_replan(self, turn: int, active: Sequence[Drone]) -> bool:
-        """¿Toca replanificar al empezar `turn`?
+        """Is a replan due at the start of `turn`?
 
-        Cada media ventana, y también si algún dron parado se ha quedado
-        sin ruta: esperar sin reserva dejaría su zona libre en la tabla
-        para que otro planificara entrar en ella.
+        Every half window, and also if some grounded drone has run out of
+        route: waiting with no reservation would leave its zone free in the
+        table for another drone to plan to enter it.
         """
         if turn % self.replan_every == 0:
             return True
         return any(not d.in_transit and not d.path for d in active)
 
     def _replan(self, turn: int, active: Sequence[Drone]) -> None:
-        """Olvida el futuro y vuelve a planificar a los drones en tierra.
+        """Forget the future and plan the grounded drones again.
 
-        Los que están en el aire no se replanifican (no pueden parar ni dar
-        la vuelta) y conservan sus reservas con `keep`: su aterrizaje ya
-        está comprometido.
+        Those in the air are not replanned (they can neither stop nor turn
+        back) and keep their reservations with `keep`: their landing is
+        already committed.
         """
         in_transit = {drone.id for drone in active if drone.in_transit}
         self.table.clear_from(turn, keep=in_transit)
@@ -224,13 +225,13 @@ class Simulator:
             time.perf_counter() - started,
         ))
 
-    # --- fase 1: decidir -----------------------------------------------
+    # --- phase 1: decide -----------------------------------------------
 
     def _decide(self, turn: int, active: Sequence[Drone]) -> List[Decision]:
-        """Qué hace cada dron este turno. No modifica nada.
+        """What each drone does this turn. It modifies nothing.
 
-        Todas las decisiones se toman contra el mismo estado, así que el
-        resultado no depende del orden de la lista de drones.
+        Every decision is taken against the same state, so the result does
+        not depend on the order of the list of drones.
         """
         decisions: List[Decision] = []
         for drone in active:
@@ -257,11 +258,11 @@ class Simulator:
 
     @staticmethod
     def _land(drone: Drone, turn: int) -> Decision:
-        """Segundo turno de un tránsito: el dron aterriza, sin elección.
+        """Second turn of a transit: the drone lands, with no choice.
 
-        Cap. VII.3: "the drone MUST reach its destination during the next
-        turn". No se le pregunta nada: preguntarle abriría la puerta a
-        esperar en el aire.
+        Chap. VII.3: "the drone MUST reach its destination during the next
+        turn". It is not asked anything: asking would open the door to
+        waiting in the air.
         """
         step = drone.path[0]
         if drone.transit_connection is None or step.arrival_turn != turn + 1:
@@ -278,13 +279,13 @@ class Simulator:
         )
         return drone, step, move
 
-    # --- fase 2: aplicar -----------------------------------------------
+    # --- phase 2: apply ------------------------------------------------
 
     def _apply(self, decisions: Sequence[Decision]) -> List[Move]:
-        """Ejecuta todas las decisiones a la vez.
+        """Execute every decision at once.
 
         Returns:
-            Los movimientos del turno, por id de dron (las esperas no).
+            The moves of the turn, by drone id (waits excluded).
         """
         moves: List[Move] = []
         for drone, step, move in decisions:
@@ -309,14 +310,14 @@ class Simulator:
         return moves
 
     def _verify(self, turn: int, moves: Sequence[Move]) -> None:
-        """Recuenta la ocupación tras el turno sin mirar la tabla.
+        """Recount the occupancy after the turn without looking at the table.
 
-        Si el pathfinder hizo bien su trabajo, esto nunca salta. Si salta,
-        es un bug de SP06/SP07, y es mejor saberlo en este turno que tres
-        mapas después.
+        If the pathfinder did its job, this never fires. If it does, it is
+        a bug in SP06/SP07, and it is better to know on this turn than three
+        maps later.
 
         Raises:
-            SimulationError: Si una zona o conexión supera su capacidad.
+            SimulationError: If a zone or connection exceeds its capacity.
         """
         in_zone: Dict[str, int] = {}
         for drone in self.drones:
@@ -342,10 +343,10 @@ class Simulator:
                     f"{move.connection.max_link_capacity})"
                 )
 
-    # --- diagnóstico ---------------------------------------------------
+    # --- diagnostics ---------------------------------------------------
 
     def _stuck_message(self, turn: int, active: Sequence[Drone]) -> str:
-        """Mensaje de no-convergencia que nombra a cada dron atascado."""
+        """Non-convergence message that names every stuck drone."""
         where = ", ".join(
             f"D{drone.id} ("
             + (

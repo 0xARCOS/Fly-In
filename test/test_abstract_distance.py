@@ -22,7 +22,7 @@ def path_cost(path: List[Zone]) -> int:
 
 
 def linear_graph(b_type: ZoneType = ZoneType.NORMAL) -> Graph:
-    """start -> a -> b -> goal; `b_type` cambia el tipo de la zona b."""
+    """start -> a -> b -> goal; `b_type` changes the type of zone b."""
     graph = Graph()
     graph.add_zone(Zone("start", 0, 0), "start_hub")
     graph.add_zone(Zone("a", 1, 0), "hub")
@@ -42,7 +42,7 @@ def test_h_of_end_hub_is_zero() -> None:
     assert AbstractDistance(graph).h(graph.end_hub) == 0
 
 
-# --- 2. Lineal todo normal: h(start) == 3 -------------------------------
+# --- 2. Linear, all normal: h(start) == 3 ------------------------------
 
 def test_linear_all_normal() -> None:
     graph = linear_graph()
@@ -52,17 +52,17 @@ def test_linear_all_normal() -> None:
     assert dist.h(graph.get_zone("b")) == 1
 
 
-# --- 3. b restricted: h(start) == 4 y h(b) == 1  (el test clave) --------
+# --- 3. b restricted: h(start) == 4 and h(b) == 1  (the key test) ------
 
 def test_restricted_middle_zone_cost_is_paid_by_the_one_entering() -> None:
     graph = linear_graph(b_type=ZoneType.RESTRICTED)
     dist = AbstractDistance(graph)
-    assert dist.h(graph.get_zone("b")) == 1      # NO 2: b la paga quien entra
+    assert dist.h(graph.get_zone("b")) == 1      # NOT 2: b is paid on entry
     assert dist.h(graph.get_zone("a")) == 3
     assert dist.h(graph.get_zone("start")) == 4
 
 
-# --- 4 y 6. blocked: fuera del dict e is_reachable False ----------------
+# --- 4 and 6. blocked: not in the dict and is_reachable False ----------
 
 def test_blocked_zone_is_absent_and_unreachable() -> None:
     graph = linear_graph(b_type=ZoneType.BLOCKED)
@@ -72,16 +72,16 @@ def test_blocked_zone_is_absent_and_unreachable() -> None:
     assert not dist.is_reachable(blocked)
     with pytest.raises(KeyError):
         dist.h(blocked)
-    # y corta el camino: start y a quedan aisladas del objetivo
+    # and it cuts the path: start and a are isolated from the goal
     assert not dist.is_reachable(graph.get_zone("a"))
     assert not dist.is_reachable(graph.get_zone("start"))
 
 
-# --- 5 y 6. zona aislada: fuera del dict e is_reachable False -----------
+# --- 5 and 6. isolated zone: not in the dict and is_reachable False ----
 
 def test_isolated_zone_is_absent_and_unreachable() -> None:
     graph = linear_graph()
-    graph.add_zone(Zone("island", 9, 9), "hub")     # sin conexiones
+    graph.add_zone(Zone("island", 9, 9), "hub")     # no connections
     dist = AbstractDistance(graph)
     island = graph.get_zone("island")
     assert "island" not in dist._dist
@@ -90,7 +90,7 @@ def test_isolated_zone_is_absent_and_unreachable() -> None:
         dist.h(island)
 
 
-# --- 7. Coherencia con SP04, zona por zona, en todos los mapas ----------
+# --- 7. Consistency with SP04, zone by zone, on every map --------------
 
 @pytest.mark.parametrize(
     "map_file", sorted(p.name for p in MAPS_DIR.glob("*.txt"))

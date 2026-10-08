@@ -1,4 +1,4 @@
-# max_drones en start_hub/end_hub debe ignorarse, no validarse (Cap. VII.4)
+# max_drones on start_hub/end_hub must be ignored, not validated (Chap. VII.4)
 nb_drones: 1
 start_hub: start 0 0 [max_drones=-1]
 end_hub: goal 2 0 [max_drones=0]

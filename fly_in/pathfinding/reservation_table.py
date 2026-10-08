@@ -1,15 +1,15 @@
-"""Tabla de reservas espacio-temporal (SP06).
+"""Space-time reservation table (SP06).
 
-Convención de tiempo (compartida con SP07 y SP08):
+Time convention (shared with SP07 and SP08):
 
-- El "instante t" es el estado tras ejecutar t turnos. El instante 0 es el
-  inicial (todos los drones en start_hub). La línea k de la salida es el
-  paso del instante k-1 al instante k.
-- Zona (z, t): drones que están en z en el instante t.
-- Conexión (c, t): drones que están cruzando c entre el instante t y t+1.
-- Un movimiento que sale de `frm` en el instante T hacia `to` (coste c)
-  ocupa la conexión en T … T+c-1 y la zona `to` en el instante T+c. No ocupa
-  ninguna zona en los instantes intermedios: está en el aire.
+- "Instant t" is the state after executing t turns. Instant 0 is the
+  initial one (every drone at start_hub). Output line k is the step from
+  instant k-1 to instant k.
+- Zone (z, t): drones that are in z at instant t.
+- Connection (c, t): drones crossing c between instant t and t+1.
+- A move that leaves `frm` at instant T towards `to` (cost c) occupies the
+  connection at T … T+c-1 and zone `to` at instant T+c. It occupies no
+  zone at the intermediate instants: it is in the air.
 """
 
 from typing import AbstractSet, Callable, Dict, List, Tuple, TypeVar
@@ -24,53 +24,54 @@ Key = TypeVar("Key", ZoneKey, MoveKey)
 
 
 class ReservationError(Exception):
-    """Se intentó reservar algo que no cabe.
+    """Something that does not fit was about to be reserved.
 
-    Nunca debería ocurrir: el planificador pregunta antes de reservar. Si
-    salta, hay un bug en quien llama, y es mejor enterarse aquí que tres
-    turnos después como una colisión inexplicable.
+    It should never happen: the planner asks before reserving. If it is
+    raised, there is a bug in the caller, and it is better to find out here
+    than three turns later as an unexplained collision.
     """
 
 
 class ReservationTable:
-    """Ocupación espacio-temporal de zonas y conexiones.
+    """Space-time occupancy of zones and connections.
 
-    Guarda QUIÉN (id de dron) ocupa cada zona y conexión en cada instante;
-    la ocupación es la longitud de esa lista. start_hub y end_hub nunca se
-    llenan porque su max_drones es UNLIMITED.
+    It stores WHO (drone id) occupies each zone and connection at each
+    instant; the occupancy is the length of that list. start_hub and
+    end_hub never fill up because their max_drones is UNLIMITED.
     """
 
     def __init__(self, graph: Graph) -> None:
-        """Crea una tabla vacía para `graph`."""
+        """Create an empty table for `graph`."""
         self._graph = graph
         self._zones: Dict[ZoneKey, List[int]] = {}
         self._links: Dict[ZoneKey, List[int]] = {}
         self._moves: Dict[MoveKey, List[int]] = {}
 
-    # --- consultas -----------------------------------------------------
+    # --- queries -------------------------------------------------------
 
     def zone_has_room(self, zone: Zone, turn: int) -> bool:
-        """¿Cabe un dron más en `zone` en el instante `turn`?"""
+        """Does one more drone fit in `zone` at instant `turn`?"""
         occupants = self._zones.get((zone.name, turn), [])
         return len(occupants) < zone.max_drones
 
     def link_has_room(self, conn: Connection, turn: int) -> bool:
-        """¿Cabe un dron más cruzando `conn` entre `turn` y `turn + 1`?"""
+        """Does one more drone fit crossing `conn` between `turn` and +1?"""
         occupants = self._links.get((conn.name, turn), [])
         return len(occupants) < conn.max_link_capacity
 
     def would_swap(self, frm: Zone, to: Zone, turn: int) -> bool:
-        """¿Hay un dron cruzando en sentido `to → frm` entre `turn` y +1?"""
+        """Is a drone crossing in direction `to → frm` between `turn`, +1?"""
         return (to.name, frm.name, turn) in self._moves
 
     def can_move(self, frm: Zone, to: Zone, turn: int) -> bool:
-        """¿Puede un dron salir de `frm` en `turn` y llegar a `to`?
+        """Can a drone leave `frm` at `turn` and arrive at `to`?
 
-        Comprueba todo lo que el movimiento ocupa: la conexión y el sentido
-        en cada instante del trayecto, y la zona destino a la llegada.
+        Checks everything the move occupies: the connection and the
+        direction at every instant of the trip, and the destination zone on
+        arrival.
 
         Raises:
-            ValueError: Si `frm` y `to` no están conectadas.
+            ValueError: If `frm` and `to` are not connected.
         """
         conn = self._graph.connection_between(frm, to)
         if not to.is_traversable():
@@ -84,26 +85,26 @@ class ReservationTable:
         return self.zone_has_room(to, turn + cost)
 
     def zone_occupants(self, zone: Zone, turn: int) -> List[int]:
-        """Ids de los drones en `zone` en el instante `turn` (copia)."""
+        """Ids of the drones in `zone` at instant `turn` (a copy)."""
         return list(self._zones.get((zone.name, turn), []))
 
     def link_occupants(self, conn: Connection, turn: int) -> List[int]:
-        """Ids de los drones cruzando `conn` entre `turn` y +1 (copia)."""
+        """Ids of the drones crossing `conn` between `turn` and +1 (copy)."""
         return list(self._links.get((conn.name, turn), []))
 
-    # --- escritura -----------------------------------------------------
+    # --- writing -------------------------------------------------------
 
     def reserve_move(
         self, drone_id: int, frm: Zone, to: Zone, turn: int
     ) -> None:
-        """Reserva el movimiento de `drone_id` de `frm` a `to` saliendo en
-        `turn`: la conexión en turn … turn+coste-1 y `to` en turn+coste.
+        """Reserve the move of `drone_id` from `frm` to `to` leaving at
+        `turn`: the connection at turn … turn+cost-1 and `to` at turn+cost.
 
-        Es atómico: o se reserva todo, o no se toca nada.
+        It is atomic: either everything is reserved or nothing is touched.
 
         Raises:
-            ReservationError: Si el movimiento no cabe.
-            ValueError: Si `frm` y `to` no están conectadas.
+            ReservationError: If the move does not fit.
+            ValueError: If `frm` and `to` are not connected.
         """
         if not self.can_move(frm, to, turn):
             raise ReservationError(
@@ -118,10 +119,10 @@ class ReservationTable:
         self._add(self._zones, (to.name, turn + cost), drone_id)
 
     def reserve_wait(self, drone_id: int, zone: Zone, turn: int) -> None:
-        """Reserva que `drone_id` está en `zone` en el instante `turn`.
+        """Reserve that `drone_id` is in `zone` at instant `turn`.
 
         Raises:
-            ReservationError: Si la zona está llena en ese instante.
+            ReservationError: If the zone is full at that instant.
         """
         if not self.zone_has_room(zone, turn):
             raise ReservationError(
@@ -132,38 +133,38 @@ class ReservationTable:
     def clear_from(
         self, turn: int, keep: AbstractSet[int] = frozenset()
     ) -> None:
-        """Descarta las reservas de `turn` en adelante.
+        """Discard the reservations from `turn` onwards.
 
-        Las anteriores a `turn` son historia ya ejecutada y se conservan.
-        Las de los drones en `keep` se conservan enteras: son drones en el
-        aire, cuya llegada ya está comprometida y no se puede replanificar.
+        Those before `turn` are history already executed and are kept.
+        Those of the drones in `keep` are kept whole: they are drones in the
+        air, whose arrival is already committed and cannot be replanned.
         """
         self._drop_from(turn, lambda drone: drone not in keep)
 
     def release(self, drone_id: int, turn: int) -> None:
-        """Descarta las reservas de `drone_id` de `turn` en adelante.
+        """Discard the reservations of `drone_id` from `turn` onwards.
 
-        Las de los demás drones no se tocan. Lo usa SP07 para cambiar la
-        reserva provisional de un dron por su ruta real.
+        Those of the other drones are not touched. SP07 uses it to swap the
+        provisional reservation of a drone for its real route.
         """
         self._drop_from(turn, lambda drone: drone == drone_id)
 
-    # --- internos ------------------------------------------------------
+    # --- internals -----------------------------------------------------
 
     def _drop_from(self, turn: int, drop: Callable[[int], bool]) -> None:
-        """Quita de las tres tablas, en las claves >= `turn`, a los drones
-        para los que `drop` es True."""
+        """Remove from the three tables, at keys >= `turn`, the drones for
+        which `drop` is True."""
         self._zones = self._filtered(self._zones, turn, drop)
         self._links = self._filtered(self._links, turn, drop)
         self._moves = self._filtered(self._moves, turn, drop)
 
     @staticmethod
     def _add(table: Dict[Key, List[int]], key: Key, drone_id: int) -> None:
-        """Apunta a `drone_id` en `key`.
+        """Record `drone_id` under `key`.
 
         Raises:
-            ReservationError: Si ese dron ya estaba apuntado ahí: contarlo
-                dos veces falsearía la ocupación.
+            ReservationError: If that drone was already recorded there:
+                counting it twice would falsify the occupancy.
         """
         occupants = table.setdefault(key, [])
         if drone_id in occupants:
@@ -174,10 +175,10 @@ class ReservationTable:
     def _filtered(
         table: Dict[Key, List[int]], turn: int, drop: Callable[[int], bool]
     ) -> Dict[Key, List[int]]:
-        """Copia de `table` sin los drones de `drop` en las claves >= `turn`.
+        """Copy of `table` without the `drop` drones at keys >= `turn`.
 
-        Construye un diccionario nuevo en lugar de borrar mientras recorre:
-        borrar durante la iteración lanza RuntimeError.
+        Builds a new dictionary instead of deleting while iterating:
+        deleting during iteration raises RuntimeError.
         """
         result: Dict[Key, List[int]] = {}
         for key, occupants in table.items():

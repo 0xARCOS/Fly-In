@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "fly-in"
 version = "0.1.0"
-description = "Simulador de coordinación de drones sobre un grafo de zonas (WHCA*)"
+description = "Drone coordination simulator over a graph of zones (WHCA*)"
 requires-python = ">=3.10"
 dependencies = [
     "pygame-ce>=2.4",

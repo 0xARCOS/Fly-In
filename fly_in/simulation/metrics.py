@@ -1,7 +1,7 @@
-"""Métricas secundarias de una simulación (Cap. VII.6, SP11).
+"""Secondary metrics of a simulation (Chap. VII.6, SP11).
 
-Se calculan a partir de la traza, no del estado interno del simulador: son
-las mismas cifras que obtendría alguien que solo leyera la salida.
+They are computed from the trace, not from the simulator's internal state:
+they are the same figures someone reading only the output would get.
 """
 
 from dataclasses import dataclass
@@ -12,16 +12,16 @@ from fly_in.simulation.simulator import Move
 
 @dataclass(frozen=True)
 class Metrics:
-    """Resumen numérico de una simulación terminada."""
+    """Numeric summary of a finished simulation."""
 
-    turns: int                   # la nota: líneas de salida
+    turns: int                   # the score: output lines
     drones: int
-    total_moves: int             # coste total de ruta: turnos-dron en marcha
-    total_waits: int             # turnos-dron parado antes de entregar
-    avg_moves_per_turn: float    # eficiencia del reparto
-    avg_turns_per_drone: float   # turno medio de entrega
-    peak_airborne: int           # máximo de drones en el aire a la vez
-    seconds: float = 0.0         # tiempo de cálculo (lo mide quien llama)
+    total_moves: int             # total path cost: drone-turns in motion
+    total_waits: int             # drone-turns standing still before delivery
+    avg_moves_per_turn: float    # how well the work is spread
+    avg_turns_per_drone: float   # average delivery turn
+    peak_airborne: int           # most drones in the air at the same time
+    seconds: float = 0.0         # compute time (measured by the caller)
 
     @classmethod
     def from_trace(
@@ -30,7 +30,7 @@ class Metrics:
         nb_drones: int,
         seconds: float = 0.0,
     ) -> "Metrics":
-        """Calcula las métricas de `trace` (una lista de Move por turno)."""
+        """Compute the metrics of `trace` (one list of Move per turn)."""
         turns = sum(1 for moves in trace if moves)
         total_moves = sum(len(moves) for moves in trace)
         delivered_at: Dict[int, int] = {}
@@ -38,7 +38,7 @@ class Metrics:
         for number, moves in enumerate(trace, start=1):
             airborne = sum(1 for move in moves if not move.arrives)
             peak_airborne = max(peak_airborne, airborne)
-            # La última llegada de cada dron es su entrega en end_hub.
+            # The last arrival of each drone is its delivery at end_hub.
             for move in moves:
                 if move.arrives:
                     delivered_at[move.drone_id] = number

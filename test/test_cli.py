@@ -1,4 +1,4 @@
-"""Tests de la CLI (SP03): ningún input debe acabar en traceback."""
+"""CLI tests (SP03): no input may end in a traceback."""
 
 import os
 import subprocess
@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
-    """Ejecuta `python -m fly_in.main` como lo haría el evaluador."""
+    """Run `python -m fly_in.main` the way the evaluator would."""
     return subprocess.run(
         [sys.executable, "-m", "fly_in.main", *args],
         cwd=ROOT, capture_output=True, text=True, timeout=30,
@@ -19,7 +19,7 @@ def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
 
 
 def write(tmp_path: Path, content: str) -> str:
-    """Escribe un mapa temporal y devuelve su ruta."""
+    """Write a temporary map and return its path."""
     path = tmp_path / "map.txt"
     path.write_text(content)
     return str(path)
@@ -38,7 +38,7 @@ def test_valid_map_succeeds() -> None:
 
 
 def test_stdout_holds_only_turn_lines_even_with_visuals() -> None:
-    # Sin terminal (como aquí), el renderer va en modo registro a stderr.
+    # Without a terminal (as here), the view runs in log mode on stderr.
     result = run_cli("maps/valid/bottleneck.txt", "--metrics")
     assert result.returncode == 0
     assert result.stdout.splitlines() == [
@@ -66,7 +66,7 @@ def test_delay_must_be_a_non_negative_number(delay: str) -> None:
     "content",
     [
         "",
-        "# solo comentarios\n",
+        "# only comments\n",
         "nb_drones: 1\nstart_hub: s 0 0\n",
         "nb_drones: 1\nstart_hub: s 0 0\nend_hub: e 1 0\nhub: x 1 1 [=]\n",
     ],
@@ -112,8 +112,9 @@ def test_window_must_be_positive(window: str) -> None:
 
 
 def test_closed_stderr_ends_cleanly() -> None:
-    # `2>&1 >/dev/null | head -1`: el lector se va y escribir en stderr da
-    # BrokenPipeError. Debe acabar con código 1, no con un error de Python.
+    # `2>&1 >/dev/null | head -1`: the reader goes away and writing to
+    # stderr raises BrokenPipeError. It must exit with code 1, not with a
+    # Python error.
     read_end, write_end = os.pipe()
     os.close(read_end)
     try:
