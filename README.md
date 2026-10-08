@@ -32,7 +32,8 @@ log with drone colors and a legend, both advancing turn by turn together.
 Requirements: **Python ≥ 3.10**, `make`. One runtime dependency,
 [`pygame-ce`](https://pyga.me) (the maintained community edition of pygame,
 same `import pygame` API), for the graphical window; `flake8`, `mypy` and
-`pytest` for development. `make install` installs all of them in `.venv`.
+`pytest` for development. `make install` installs all of them in `.venv`;
+every other rule creates it first if it is missing.
 
 ```console
 $ make install                                   # creates .venv and installs everything (also plain `make`)
@@ -43,7 +44,7 @@ $ make debug MAP=maps/valid/bottleneck.txt       # the program under pdb
 $ make bench                                     # official benchmarks + config comparison
 $ make test                                      # test suite
 $ make lint && make lint-strict                  # flake8 + mypy (+ --strict)
-$ make clean                                     # tool caches and __pycache__
+$ make clean                                     # removes .venv, tool caches and __pycache__
 ```
 
 Direct use and options:
